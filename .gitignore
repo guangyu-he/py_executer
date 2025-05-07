@@ -1,0 +1,8 @@
+/target
+.venv
+
+*.py
+pyproject.toml
+.idea
+uv.lock
+requirements.txt
