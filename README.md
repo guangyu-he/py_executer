@@ -20,7 +20,7 @@ variables, making your workflow faster and more reliable.
    and [Cargo](https://doc.rust-lang.org/cargo/getting-started/installation.html).
 2. Clone this repository:
    ```sh
-   git clone <your-repo-url>
+   git clone https://github.com/guangyu-he/py_executer
    cd py_executer
    ```
 3. Build the project:
@@ -46,7 +46,7 @@ py_executer <SCRIPT_PATH> [OPTIONS]
 - `-E`, `--env <KEY=VALUE>`: Additional environment variables (can be used multiple times).
 - `-e`, `--env-file <ENV_FILE>`: Path to a .env file (default: `.env` under the script directory).
 - `--quiet`: Suppress output.
-- `-A`, `--py-arg <ARG>`: Additional arguments to pass to the Python script.
+- `-A`, `--py-arg <ARGs>`: Additional arguments to pass to the Python script, seperated by space.
 
 ### Example
 
