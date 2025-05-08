@@ -1,10 +1,8 @@
 use crate::warning_println;
 use anyhow::{Result, anyhow};
-use clap::builder::Str;
 use std::env;
-use std::fmt::Write;
 use std::path::PathBuf;
-use std::process::{Command, Output, Stdio};
+use std::process::{Command, Stdio};
 
 pub fn get_uv_path() -> Result<String> {
     // For Unix-like systems (Linux, macOS)
@@ -53,7 +51,7 @@ pub fn get_uv_path() -> Result<String> {
     }
 }
 
-pub fn prepare_uv_project(project_path: &PathBuf, quiet: bool) -> Result<()> {
+fn prepare_uv_project(project_path: &PathBuf, quiet: bool) -> Result<()> {
     let uv_path = get_uv_path()?;
     let output = Command::new(&uv_path)
         .args(["init", "--bare", project_path.to_str().unwrap()])
@@ -101,7 +99,7 @@ pub fn prepare_venv(venv_path: &PathBuf, quiet: bool) -> Result<()> {
     }
 }
 
-pub fn install_requirements(
+fn install_requirements(
     venv_path: &PathBuf,
     requirements_path: &PathBuf,
     quiet: bool,
