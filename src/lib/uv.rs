@@ -56,11 +56,15 @@ fn prepare_uv_project(project_path: &PathBuf, quiet: bool) -> Result<()> {
     let output = Command::new(&uv_path)
         .args(["init", "--bare", project_path.to_str().unwrap()])
         .stdout(if quiet {
-            Stdio::null()
+            Stdio::piped()
         } else {
             Stdio::inherit()
         })
-        .stderr(if quiet { Stdio::null() } else { Stdio::piped() })
+        .stderr(if quiet {
+            Stdio::piped()
+        } else {
+            Stdio::inherit()
+        })
         .output()?;
 
     if output.status.success() {
