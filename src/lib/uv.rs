@@ -56,15 +56,11 @@ fn prepare_uv_project(project_path: &PathBuf, quiet: bool) -> Result<()> {
     let output = Command::new(&uv_path)
         .args(["init", "--bare", project_path.to_str().unwrap()])
         .stdout(if quiet {
-            Stdio::piped()
+            Stdio::null()
         } else {
             Stdio::inherit()
         })
-        .stderr(if quiet {
-            Stdio::piped()
-        } else {
-            Stdio::inherit()
-        })
+        .stderr(Stdio::piped())
         .output()?;
 
     if output.status.success() {
@@ -179,7 +175,6 @@ pub fn venv(
         venv_path = script_parent_path.join(".venv");
         if !venv_path.exists() {
             prepare_venv(&venv_path, quiet)?;
-            return Err(anyhow!("Failed to prepare venv"));
         }
         install_requirements(
             &venv_path,
