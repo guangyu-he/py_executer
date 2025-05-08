@@ -51,7 +51,7 @@ py_executer <SCRIPT_PATH> [OPTIONS]
 ### Example
 
 ```sh
-py_executer my_script.py -E DEBUG=true -A --input -A data.txt
+py_executer my_script.py -E DEBUG=true -A --input data.txt
 # this will be equivalent to:
 # python3 my_script.py --input data.txt
 ```

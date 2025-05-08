@@ -34,7 +34,7 @@ struct Args {
     quiet: bool,
 
     /// Python arguments
-    #[clap(short = 'A', long)]
+    #[arg(short = 'A', long = "py_arg", num_args = 1.., value_delimiter = ' ')]
     py_arg: Vec<String>,
 }
 
