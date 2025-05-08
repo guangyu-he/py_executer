@@ -1,9 +1,9 @@
 use clap::Parser;
 use colored::*;
 use dotenv::from_path;
-use py_executer_lib::macros::{error_println, warning_println};
+use py_executer_lib::macros::error_println;
+use py_executer_lib::utils::{append_pwd_to_pythonpath, set_additional_env_var};
 use py_executer_lib::uv::{get_uv_path, venv};
-use std::collections::HashMap;
 use std::io::{BufRead, BufReader};
 use std::path::PathBuf;
 use std::process::{Command, Stdio};
@@ -38,64 +38,15 @@ struct Args {
     py_arg: Vec<String>,
 }
 
-fn append_pwd_to_pythonpath(current_dir: &PathBuf) -> bool {
-    if !current_dir.exists() {
-        error_println!(
-            "Current directory not valid: {}",
-            current_dir.display().to_string().bold()
-        );
-        false
-    } else {
-        // if the pwd is valid, append it to PYTHONPATH
-        let mut path = env::var("PYTHONPATH").unwrap_or_default();
-        if !path.contains(&current_dir.to_string_lossy().to_string()) {
-            if !path.is_empty() {
-                path.push(':');
-            }
-            path.push_str(current_dir.to_string_lossy().to_string().as_str());
-            unsafe {
-                env::set_var("PYTHONPATH", path);
-            }
-        }
-        true
-    }
-}
-
-fn set_additional_env_var(
-    additional_env_from_args: Vec<String>,
-    quiet: bool,
-) -> HashMap<String, String> {
-    // Process additional environment variables
-    let mut additional_env = HashMap::new();
-    for env_var in additional_env_from_args {
-        if let Some(pos) = env_var.find('=') {
-            let key = env_var[..pos].to_string();
-            let value = env_var[pos + 1..].to_string();
-            additional_env.insert(key.clone(), value.clone());
-            if !quiet {
-                println!("Setting env: {} = {}", key.bold(), value);
-            }
-        } else {
-            warning_println!(
-                "Warning: Ignoring malformed environment variable: {}",
-                env_var.bold()
-            );
-        }
-    }
-    additional_env
-}
-
-fn main() -> process::ExitCode {
+/// Handle argument parsing and validation
+fn parse_and_validate_args() -> (Args, PathBuf) {
     let args = Args::parse();
-    let quiet = args.quiet;
-    let script_path = args.script;
-
+    let script_path = args.script.clone();
     // check script path
     if !script_path.exists() {
         error_println!("{} not exists", script_path.display().to_string().bold());
-        return process::ExitCode::FAILURE;
+        process::exit(1);
     }
-
     let script_path = match script_path.canonicalize() {
         Ok(script_path) => script_path,
         Err(err) => {
@@ -104,109 +55,84 @@ fn main() -> process::ExitCode {
                 script_path.display().to_string().bold(),
                 err
             );
-            return process::ExitCode::FAILURE;
+            process::exit(1);
         }
     };
+    (args, script_path)
+}
 
+/// Setup environment variables, dotenv, pythonpath, and venv
+fn setup_environment(args: &Args, script_path: &PathBuf) -> (PathBuf, PathBuf, String) {
     let script_parent_path = match script_path.parent() {
         Some(script_parent_path) => script_parent_path.to_path_buf(),
         None => {
             error_println!("Failed to get script parent directory");
-            return process::ExitCode::FAILURE;
+            process::exit(1);
         }
     };
     if !append_pwd_to_pythonpath(&script_parent_path) {
-        return process::ExitCode::FAILURE;
+        process::exit(1);
     }
-
     // prepare dotenv path
     let dotenv_path = if args.env_file.to_str().unwrap_or("") == ".env" {
-        // default .env file name
-        script_parent_path.join(args.env_file)
+        script_parent_path.join(&args.env_file)
     } else {
         if args.env_file.exists() {
-            args.env_file
+            args.env_file.clone()
         } else {
             error_println!("{} not exists", args.env_file.display().to_string().bold());
             PathBuf::from("")
         }
     };
-    // load dotenv
     from_path(dotenv_path).ok();
-
     // load venv
-    let venv_path = match venv(args.venv, &script_parent_path, args.quiet) {
+    let venv_path = match venv(args.venv.clone(), &script_parent_path, args.quiet) {
         Ok(venv_path) => venv_path,
         Err(e) => {
             error_println!("Failed to get venv path with error: {}", e);
-            return process::ExitCode::FAILURE;
+            process::exit(1);
         }
     };
-
     let uv_path = match get_uv_path() {
         Ok(uv_path) => uv_path,
         Err(e) => {
             error_println!("Failed to get uv path with error: {}", e);
-            return process::ExitCode::FAILURE;
+            process::exit(1);
         }
     };
+    (script_parent_path, venv_path, uv_path)
+}
 
-    if !quiet {
-        println!("Using venv: {}", venv_path.display().to_string().bold());
-        println!(
-            "Executing script: {}",
-            script_parent_path
-                .join(&script_path)
-                .display()
-                .to_string()
-                .bold()
-        );
-    }
-
-    // Process additional environment variables
-    let additional_env = set_additional_env_var(args.env, quiet);
-
-    // Display python args
-    let python_args = args.py_arg;
-    if !quiet {
-        for arg in &python_args {
-            println!("Python arg: {}", arg.bold());
-        }
-    }
-
-    // Finish setup
-    if !quiet {
-        println!("-------------------------------");
-    }
-
-    // execute python script with streaming output
+/// Construct the command to run the Python script
+fn construct_command(
+    uv_path: &String,
+    venv_path: &PathBuf,
+    script_parent_path: &PathBuf,
+    script_path: &PathBuf,
+    python_args: &[String],
+    additional_env: &std::collections::HashMap<String, String>,
+) -> Command {
     let mut command = Command::new(uv_path);
     command
         .arg("run")
         .args(["--directory", &venv_path.to_string_lossy().to_string()])
-        .arg(&script_parent_path.join(&script_path))
+        .arg(&script_parent_path.join(script_path))
         .args(python_args)
         .envs(env::vars())
         .envs(additional_env)
         .stdout(Stdio::piped())
         .stderr(Stdio::piped());
+    command
+}
 
-    let mut child = command.spawn().unwrap_or_else(|e| {
-        error_println!("Failed to execute Python script: {}", e.to_string().bold());
-        process::exit(1);
-    });
-
-    // Stream stdout in real-time
+/// Stream output from child process stdout and stderr
+fn stream_output(mut child: std::process::Child) -> process::ExitCode {
     let stdout = child.stdout.take().expect("Failed to capture stdout");
     let stdout_reader = BufReader::new(stdout);
     let stdout_lines = stdout_reader.lines();
-
-    // Stream stderr in real-time
     let stderr = child.stderr.take().expect("Failed to capture stderr");
     let stderr_reader = BufReader::new(stderr);
     let stderr_lines = stderr_reader.lines();
-
-    // Create a thread to handle stdout
     let stdout_handle = std::thread::spawn(move || {
         for line in stdout_lines {
             if let Ok(line) = line {
@@ -214,8 +140,6 @@ fn main() -> process::ExitCode {
             }
         }
     });
-
-    // Create a thread to handle stderr
     let stderr_handle = std::thread::spawn(move || {
         for line in stderr_lines {
             if let Ok(line) = line {
@@ -223,12 +147,8 @@ fn main() -> process::ExitCode {
             }
         }
     });
-
-    // Wait for output threads to finish
     stdout_handle.join().unwrap();
     stderr_handle.join().unwrap();
-
-    // Wait for the child process to finish and get exit status
     match child.wait() {
         Ok(status) => {
             if status.success() {
@@ -242,4 +162,42 @@ fn main() -> process::ExitCode {
             process::ExitCode::FAILURE
         }
     }
+}
+
+fn main() -> process::ExitCode {
+    let (args, script_path) = parse_and_validate_args();
+    let quiet = args.quiet;
+    let (script_parent_path, venv_path, uv_path) = setup_environment(&args, &script_path);
+    if !quiet {
+        println!("Using venv: {}", venv_path.display().to_string().bold());
+        println!(
+            "Executing script: {}",
+            script_parent_path
+                .join(&script_path)
+                .display()
+                .to_string()
+                .bold()
+        );
+    }
+    let additional_env = set_additional_env_var(args.env.clone(), quiet);
+    let python_args = args.py_arg.clone();
+    if !quiet {
+        for arg in &python_args {
+            println!("Python arg: {}", arg.bold());
+        }
+        println!("-------------------------------");
+    }
+    let mut command = construct_command(
+        &uv_path,
+        &venv_path,
+        &script_parent_path,
+        &script_path,
+        &python_args,
+        &additional_env,
+    );
+    let child = command.spawn().unwrap_or_else(|e| {
+        error_println!("Failed to execute Python script: {}", e.to_string().bold());
+        process::exit(1);
+    });
+    stream_output(child)
 }
