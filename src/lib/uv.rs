@@ -116,6 +116,7 @@ fn install_requirements(
     let output = Command::new(&uv_path)
         .args([
             "add",
+            "--quiet",
             "--directory",
             venv_path.to_str().unwrap(),
             "-r",
@@ -172,8 +173,8 @@ pub fn venv(
     if !venv_path.exists() {
         prepare_uv_project(&script_parent_path, quiet)?;
         venv_path = script_parent_path.join(".venv");
-        prepare_venv(&venv_path, quiet)?;
         if !venv_path.exists() {
+            prepare_venv(&venv_path, quiet)?;
             return Err(anyhow!("Failed to prepare venv"));
         }
         install_requirements(
