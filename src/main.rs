@@ -4,6 +4,7 @@ use dotenv::from_path;
 use py_executer_lib::macros::error_println;
 use py_executer_lib::utils::{append_pwd_to_pythonpath, set_additional_env_var};
 use py_executer_lib::uv::{get_uv_path, venv};
+use py_executer_lib::warning_println;
 use std::io::{BufRead, BufReader};
 use std::path::PathBuf;
 use std::process::{Command, Stdio};
@@ -32,6 +33,9 @@ struct Args {
 
     #[clap(long, default_value_t = false)]
     quiet: bool,
+
+    #[clap(long, default_value_t = false)]
+    clean: bool,
 
     /// Python arguments
     #[arg(short = 'A', long = "py_arg", num_args = 1.., value_delimiter = ' ')]
@@ -168,6 +172,38 @@ fn main() -> process::ExitCode {
             process::exit(1);
         }
     };
+
+    let clean = args.clean;
+    let mut files_to_clean: Vec<PathBuf> = Vec::new();
+    let using_other_venv = match &args.venv {
+        Some(_) => true,
+        None => false,
+    };
+
+    if clean && using_other_venv {
+        warning_println!("Clean mode is not activated when using custom venv");
+    }
+
+    if clean && !using_other_venv {
+        let original_venv = script_parent_path.join(".venv");
+        if !original_venv.exists() {
+            // means originally .venv does not exist
+            files_to_clean.push(original_venv);
+        }
+
+        let pyproject_toml_path = script_parent_path.join("pyproject.toml");
+        if !pyproject_toml_path.exists() {
+            // means originally pyproject.toml does not exist
+            files_to_clean.push(pyproject_toml_path);
+        }
+
+        let uv_lock_path = script_parent_path.join("uv.lock");
+        if !uv_lock_path.exists() {
+            // means originally uv.lock does not exist
+            files_to_clean.push(uv_lock_path);
+        }
+    }
+
     let (venv_path, uv_path) = setup_environment(&args, &script_parent_path);
     if !quiet {
         println!("Using venv: {}", venv_path.display().to_string().bold());
@@ -200,5 +236,27 @@ fn main() -> process::ExitCode {
         error_println!("Failed to execute Python script: {}", e.to_string().bold());
         process::exit(1);
     });
-    stream_output(child)
+    let result = stream_output(child);
+    if !files_to_clean.is_empty() {
+        for path in files_to_clean.iter() {
+            if path.is_dir() {
+                if let Err(e) = std::fs::remove_dir_all(path) {
+                    error_println!(
+                        "Failed to delete {}: {}",
+                        path.display().to_string().bold(),
+                        e.to_string().bold()
+                    );
+                }
+            } else {
+                if let Err(e) = std::fs::remove_file(path) {
+                    error_println!(
+                        "Failed to delete {}: {}",
+                        path.display().to_string().bold(),
+                        e.to_string().bold()
+                    );
+                }
+            }
+        }
+    }
+    result
 }

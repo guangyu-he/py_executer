@@ -46,7 +46,9 @@ py_executer <SCRIPT_PATH> [OPTIONS]
 - `-E`, `--env <KEY=VALUE>`: Additional environment variables (can be used multiple times).
 - `-e`, `--env-file <ENV_FILE>`: Path to a .env file (default: `.env` under the script directory).
 - `--quiet`: Suppress output.
-- `-A`, `--py-arg <ARGs>`: Additional arguments to pass to the Python script, seperated by space.
+- `--clean`: Clean the generated venv and uv config files after the execution.
+- `-A`, `--py-arg <ARGs>`: Additional arguments to pass to the Python script, seperated by space, and must be placed as
+  the last argument.
 
 ### Example
 
