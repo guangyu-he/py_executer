@@ -180,12 +180,13 @@ pub fn venv(
             quiet,
         )?;
     } else {
-        prepare_uv_project(&venv_path.parent().unwrap().to_path_buf(), quiet)?;
-        install_requirements(
-            &venv_path,
-            &script_parent_path.join("requirements.txt"),
-            quiet,
-        )?;
+        if script_parent_path.join("requirements.txt").exists() {
+            if !quiet {
+                warning_println!(
+                    "You are about to use an existing venv, it is not possible for now to install requirements.txt on it"
+                );
+            }
+        }
     }
 
     Ok(venv_path)
