@@ -89,10 +89,12 @@ fn install_requirements(
     quiet: bool,
 ) -> Result<()> {
     if !requirements_path.exists() {
-        warning_println!(
-            "{} not exists, skipping",
-            requirements_path.display().to_string().bold()
-        );
+        if !quiet {
+            warning_println!(
+                "{} not exists, skipping",
+                requirements_path.display().to_string().bold()
+            );
+        }
         return Ok(());
     }
 
@@ -138,6 +140,12 @@ pub fn venv(
             venv_path = venv_path_from_arg;
         } else {
             // if venv_path input from arg is not exist, continue
+            if !quiet {
+                warning_println!(
+                    "Venv provided {} does not exist. Will use uv to manage venv",
+                    venv_path_from_arg.display()
+                );
+            }
         }
     }
 
@@ -151,6 +159,12 @@ pub fn venv(
             venv_path = env_venv_pathbuf;
         } else {
             // if it does not exist, continue and using default venv path
+            if !quiet {
+                warning_println!(
+                    "Venv provided from PYTHON_VENV_PATH {} does not exist. Will use uv to manage venv",
+                    env_venv_pathbuf.display()
+                );
+            }
         }
     }
 
