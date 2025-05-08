@@ -19,35 +19,19 @@ pub fn get_uv_path() -> Result<String> {
         let path = String::from_utf8(output.stdout)?.trim().to_string();
         Ok(path)
     } else {
-        // not found uv, install it
+        // not found uv, hint to install it
 
         // for unix, run wget -qO- https://astral.sh/uv/install.sh | sh
+        eprintln!("Please run the following command to install uv:");
         #[cfg(not(target_os = "windows"))]
-        let output = Command::new("wget")
-            .arg("-qO-")
-            .arg("https://astral.sh/uv/install.sh")
-            .output()?;
+        eprintln!("wget -qO- https://astral.sh/uv/install.sh | sh");
 
         // for windows, run powershell -ExecutionPolicy ByPass -c "irm https://astral.sh/uv/install.ps1 | iex"
         #[cfg(target_os = "windows")]
-        let output = Command::new("powershell")
-            .arg("-ExecutionPolicy")
-            .arg("ByPass")
-            .arg("-c")
-            .arg("irm https://astral.sh/uv/install.ps1 | iex")
-            .output()?;
-
-        if output.status.success() {
-            let output = Command::new(find_executable).arg("uv").output()?;
-            if output.status.success() {
-                let path = String::from_utf8(output.stdout)?.trim().to_string();
-                Ok(path)
-            } else {
-                Err(anyhow!("Failed to install uv"))
-            }
-        } else {
-            Err(anyhow!("Failed to install uv"))
-        }
+        eprintln!(
+            "powershell -ExecutionPolicy ByPass -c \"irm https://astral.sh/uv/install.ps1 | iex\""
+        );
+        Err(anyhow!("uv not installed"))
     }
 }
 
