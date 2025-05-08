@@ -1,7 +1,7 @@
+use crate::macros::{error_println, warning_println};
+use colored::*;
 use std::collections::HashMap;
 use std::{env, path::PathBuf};
-use colored::*;
-use crate::macros::{error_println, warning_println};
 
 /// Appends the current directory to PYTHONPATH if it is valid.
 pub fn append_pwd_to_pythonpath(current_dir: &PathBuf) -> bool {
@@ -48,4 +48,20 @@ pub fn set_additional_env_var(
         }
     }
     additional_env
+}
+
+pub fn get_python_exec_path(venv_path: &PathBuf) -> String {
+    if cfg!(target_os = "windows") {
+        venv_path
+            .join("Scripts")
+            .join("python.exe")
+            .to_string_lossy()
+            .to_string()
+    } else {
+        venv_path
+            .join("bin")
+            .join("python")
+            .to_string_lossy()
+            .to_string()
+    }
 }
