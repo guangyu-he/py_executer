@@ -2,7 +2,9 @@ use clap::Parser;
 use colored::*;
 use dotenv::from_path;
 use py_executer_lib::macros::error_println;
-use py_executer_lib::utils::{append_pwd_to_pythonpath, set_additional_env_var};
+use py_executer_lib::utils::{
+    append_pwd_to_pythonpath, get_python_exec_path, set_additional_env_var,
+};
 use py_executer_lib::uv::{get_uv_path, venv};
 use py_executer_lib::warning_println;
 use std::io::{BufRead, BufReader};
@@ -109,10 +111,12 @@ fn construct_command(
     python_args: &[String],
     additional_env: &std::collections::HashMap<String, String>,
 ) -> Command {
+    let python_exec_path = get_python_exec_path(&venv_path);
+
     let mut command = Command::new(uv_path);
     command
         .arg("run")
-        .args(["--directory", &venv_path.to_string_lossy().to_string()])
+        .args(["--python", python_exec_path.as_str()])
         .arg(&script_parent_path.join(script_path))
         .args(python_args)
         .envs(env::vars())
