@@ -62,15 +62,8 @@ fn parse_and_validate_args() -> (Args, PathBuf) {
 }
 
 /// Setup environment variables, dotenv, pythonpath, and venv
-fn setup_environment(args: &Args, script_path: &PathBuf) -> (PathBuf, PathBuf, String) {
-    let script_parent_path = match script_path.parent() {
-        Some(script_parent_path) => script_parent_path.to_path_buf(),
-        None => {
-            error_println!("Failed to get script parent directory");
-            process::exit(1);
-        }
-    };
-    if !append_pwd_to_pythonpath(&script_parent_path) {
+fn setup_environment(args: &Args, script_parent_path: &PathBuf) -> (PathBuf, String) {
+    if !append_pwd_to_pythonpath(script_parent_path) {
         process::exit(1);
     }
     // prepare dotenv path
@@ -100,7 +93,7 @@ fn setup_environment(args: &Args, script_path: &PathBuf) -> (PathBuf, PathBuf, S
             process::exit(1);
         }
     };
-    (script_parent_path, venv_path, uv_path)
+    (venv_path, uv_path)
 }
 
 /// Construct the command to run the Python script
@@ -167,7 +160,15 @@ fn stream_output(mut child: std::process::Child) -> process::ExitCode {
 fn main() -> process::ExitCode {
     let (args, script_path) = parse_and_validate_args();
     let quiet = args.quiet;
-    let (script_parent_path, venv_path, uv_path) = setup_environment(&args, &script_path);
+
+    let script_parent_path = match script_path.parent() {
+        Some(script_parent_path) => script_parent_path.to_path_buf(),
+        None => {
+            error_println!("Failed to get script parent directory");
+            process::exit(1);
+        }
+    };
+    let (venv_path, uv_path) = setup_environment(&args, &script_parent_path);
     if !quiet {
         println!("Using venv: {}", venv_path.display().to_string().bold());
         println!(
