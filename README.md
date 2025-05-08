@@ -42,13 +42,12 @@ py_executer <SCRIPT_PATH> [OPTIONS]
 
 ### Options
 
-- `-v`, `--venv <VENV_PATH>`: Specify a custom virtual environment path.
-- `-E`, `--env <KEY=VALUE>`: Additional environment variables (can be used multiple times).
-- `-e`, `--env-file <ENV_FILE>`: Path to a .env file (default: `.env` under the script directory).
+- `-v`, `--venv <VENV_PATH>`: Specify a custom virtual environment path. If set, this path is used directly (not managed by uv), requirements.txt is not installed, and clean mode is ignored.
+- `-E`, `--env <KEY=VALUE>`: Additional environment variables in the format KEY=VALUE. Can be used multiple times.
+- `-e`, `--env-file <ENV_FILE>`: Path to a .env file (default: `.env` in the current directory).
 - `--quiet`: Suppress output.
-- `--clean`: Clean the generated venv and uv config files after the execution.
-- `-A`, `--py-arg <ARGs>`: Additional arguments to pass to the Python script, seperated by space, and must be placed as
-  the last argument.
+- `--clean`: Clean the created uv-managed .venv and config files after execution. Pre-existing files are not deleted.
+- `-A`, `--py-arg <ARGs>`: Additional arguments to pass to the Python script. Must be placed as the last argument(s) and are passed directly to Python.
 
 ### Example
 
@@ -66,4 +65,3 @@ py_executer my_script.py -E DEBUG=true -A --input data.txt
 ## Contributing
 
 Pull requests are welcome! For major changes, please open an issue first to discuss what you would like to change.
-

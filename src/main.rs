@@ -20,8 +20,9 @@ struct Args {
     script: PathBuf,
 
     /// Venv path, can be also pre-defined by PYTHON_VENV_PATH,
-    /// the path need to contain python interpreter
-    /// default is .venv/bin or .venv/Scripts (windows)
+    /// if specified, it will be used directly without managed by uv
+    /// clean mode is not an option and will be ignored
+    /// requirements.txt will not be installed
     #[clap(short, long)]
     venv: Option<PathBuf>,
 
@@ -33,13 +34,17 @@ struct Args {
     #[clap(short = 'e', long, default_value = ".env")]
     env_file: PathBuf,
 
+    /// Suppress output
     #[clap(long, default_value_t = false)]
     quiet: bool,
 
+    /// Clean mode
+    /// if specified, it will clean the created uv .venv and configs
+    /// if those files originally exist, they will not be deleted
     #[clap(long, default_value_t = false)]
     clean: bool,
 
-    /// Python arguments
+    /// Python arguments, must be placed as the last argument
     #[arg(short = 'A', long = "py_arg", num_args = 1.., value_delimiter = ' ')]
     py_arg: Vec<String>,
 }
@@ -226,6 +231,14 @@ fn main() -> process::ExitCode {
         for arg in &python_args {
             println!("Python arg: {}", arg.bold());
         }
+
+        if clean && !files_to_clean.is_empty() {
+            warning_println!("These following files will be deleted because you activate clean mode");
+            for path in &files_to_clean {
+                println!("{}", path.display().to_string().bold());
+            }
+        }
+
         println!("-------------------------------");
     }
     let mut command = construct_command(
