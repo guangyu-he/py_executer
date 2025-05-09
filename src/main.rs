@@ -115,20 +115,32 @@ fn construct_command(
     script_path: &PathBuf,
     python_args: &[String],
     additional_env: &std::collections::HashMap<String, String>,
+    has_custom_venv: bool,
 ) -> Command {
     let python_exec_path = get_python_exec_path(&venv_path);
-
-    let mut command = Command::new(uv_path);
-    command
-        .arg("run")
-        .args(["--python", python_exec_path.as_str()])
-        .arg(&script_parent_path.join(script_path))
-        .args(python_args)
-        .envs(env::vars())
-        .envs(additional_env)
-        .stdout(Stdio::piped())
-        .stderr(Stdio::piped());
-    command
+    if has_custom_venv {
+        let mut command = Command::new(python_exec_path);
+        command
+            .arg(&script_parent_path.join(script_path))
+            .args(python_args)
+            .envs(env::vars())
+            .envs(additional_env)
+            .stdout(Stdio::piped())
+            .stderr(Stdio::piped());
+        command
+    } else {
+        let mut command = Command::new(uv_path);
+        command
+            .arg("run")
+            .args(["--python", python_exec_path.as_str()])
+            .arg(&script_parent_path.join(script_path))
+            .args(python_args)
+            .envs(env::vars())
+            .envs(additional_env)
+            .stdout(Stdio::piped())
+            .stderr(Stdio::piped());
+        command
+    }
 }
 
 /// Stream output from child process stdout and stderr
@@ -173,6 +185,7 @@ fn stream_output(mut child: std::process::Child) -> process::ExitCode {
 fn main() -> process::ExitCode {
     let (args, script_path) = parse_and_validate_args();
     let quiet = args.quiet;
+    let has_custom_venv = args.venv.is_some();
 
     let script_parent_path = match script_path.parent() {
         Some(script_parent_path) => script_parent_path.to_path_buf(),
@@ -233,7 +246,9 @@ fn main() -> process::ExitCode {
         }
 
         if clean && !files_to_clean.is_empty() {
-            warning_println!("These following files will be deleted because you activate clean mode");
+            warning_println!(
+                "These following files will be deleted because you activate clean mode"
+            );
             for path in &files_to_clean {
                 println!("{}", path.display().to_string().bold());
             }
@@ -248,6 +263,7 @@ fn main() -> process::ExitCode {
         &script_path,
         &python_args,
         &additional_env,
+        has_custom_venv,
     );
     let child = command.spawn().unwrap_or_else(|e| {
         error_println!("Failed to execute Python script: {}", e.to_string().bold());
