@@ -1,6 +1,5 @@
 use crate::warning_println;
 use anyhow::{Result, anyhow};
-use std::env;
 use std::path::PathBuf;
 use std::process::{Command, Stdio};
 
@@ -145,25 +144,6 @@ pub fn venv(
                 warning_println!(
                     "Venv provided {} does not exist. Will use uv to manage venv",
                     venv_path_from_arg.display()
-                );
-            }
-        }
-    }
-
-    // try using PYTHON_VENV_PATH from env
-    let env_venv_path = env::var("PYTHON_VENV_PATH").unwrap_or("".to_string());
-    if !env_venv_path.is_empty() {
-        // if it is not empty, wrap it as a PathBuf and check if it exists
-        let env_venv_pathbuf = PathBuf::from(env_venv_path);
-        if env_venv_pathbuf.exists() {
-            // if it exists, return it as a string
-            venv_path = env_venv_pathbuf;
-        } else {
-            // if it does not exist, continue and using default venv path
-            if !quiet {
-                warning_println!(
-                    "Venv provided from PYTHON_VENV_PATH {} does not exist. Will use uv to manage venv",
-                    env_venv_pathbuf.display()
                 );
             }
         }
