@@ -2,9 +2,7 @@ use clap::Parser;
 use colored::*;
 use dotenv::from_path;
 use py_executer_lib::macros::error_println;
-use py_executer_lib::utils::{
-    append_pwd_to_pythonpath, get_python_exec_path, set_additional_env_var,
-};
+use py_executer_lib::utils::{get_python_exec_path, set_additional_env_var};
 use py_executer_lib::uv::venv;
 use py_executer_lib::warning_println;
 use std::io::{BufRead, BufReader};
@@ -74,10 +72,6 @@ fn parse_and_validate_args() -> (Args, PathBuf) {
 
 /// Setup environment variables, dotenv, pythonpath, and venv
 fn setup_environment(args: &Args, script_parent_path: &PathBuf) -> (PathBuf, String) {
-    if !append_pwd_to_pythonpath(script_parent_path) {
-        process::exit(1);
-    }
-
     // prepare dotenv path
     let dotenv_path = if args.env_file.exists() {
         &args.env_file
