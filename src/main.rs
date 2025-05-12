@@ -5,7 +5,7 @@ use py_executer_lib::macros::error_println;
 use py_executer_lib::utils::{
     append_pwd_to_pythonpath, get_python_exec_path, set_additional_env_var,
 };
-use py_executer_lib::uv::{get_uv_path, venv};
+use py_executer_lib::uv::venv;
 use py_executer_lib::warning_println;
 use std::io::{BufRead, BufReader};
 use std::path::PathBuf;
@@ -77,18 +77,27 @@ fn setup_environment(args: &Args, script_parent_path: &PathBuf) -> (PathBuf, Str
     if !append_pwd_to_pythonpath(script_parent_path) {
         process::exit(1);
     }
+
     // prepare dotenv path
-    let dotenv_path = if args.env_file.to_str().unwrap_or("") == ".env" {
-        script_parent_path.join(&args.env_file)
+    let dotenv_path = if args.env_file.exists() {
+        &args.env_file
     } else {
-        if args.env_file.exists() {
-            args.env_file.clone()
-        } else {
-            error_println!("{} not exists", args.env_file.display().to_string().bold());
-            PathBuf::from("")
+        // try using absolute path
+        let env_file_path = &args.env_file;
+        match env_file_path.canonicalize() {
+            Ok(path) => &path.clone(),
+            Err(err) => {
+                error_println!(
+                    "{} not exists, {}",
+                    args.env_file.display().to_string().bold(),
+                    err
+                );
+                &PathBuf::from("")
+            }
         }
     };
     from_path(dotenv_path).ok();
+
     // load venv
     let (venv_path, uv_path) = match venv(args.venv.clone(), &script_parent_path, args.quiet) {
         Ok(venv_path) => venv_path,
