@@ -87,7 +87,7 @@ fn setup_environment(args: &Args, script_parent_path: &PathBuf) -> (PathBuf, Str
         match env_file_path.canonicalize() {
             Ok(path) => &path.clone(),
             Err(err) => {
-                error_println!(
+                warning_println!(
                     "{} not exists, {}",
                     args.env_file.display().to_string().bold(),
                     err
