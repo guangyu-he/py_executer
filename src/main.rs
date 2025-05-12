@@ -198,16 +198,12 @@ fn main() -> process::ExitCode {
 
     let clean = args.clean;
     let mut files_to_clean: Vec<PathBuf> = Vec::new();
-    let using_other_venv = match &args.venv {
-        Some(_) => true,
-        None => false,
-    };
 
-    if clean && using_other_venv {
+    if clean && has_custom_venv {
         warning_println!("Clean mode is not activated when using custom venv");
     }
 
-    if clean && !using_other_venv {
+    if clean && !has_custom_venv {
         let original_venv = script_parent_path.join(".venv");
         if !original_venv.exists() {
             // means originally .venv does not exist
