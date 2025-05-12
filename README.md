@@ -9,7 +9,8 @@ variables, making your workflow faster and more reliable.
 - **Automatic Virtual Environment Management:** Manage a Python virtual environment
   using [uv](https://github.com/astral-sh/uv).
 - **Dependency Installation:** Installs dependencies from `requirements.txt` automatically.
-- **.env File Support:** Loads environment variables from a `.env` file.
+- **.env File Support:** Loads environment variables from a `.env` file or from CLI.
+- **Setup `PYTHONVENV`:** Automatically set python path based on the path where the CLI is executed.
 - **Custom Environment Variables:** Pass additional environment variables via CLI.
 - **Flexible Python Arguments:** Pass extra arguments to the Python script.
 - **Clean Mode:** Clean the created uv-managed .venv and config files after execution, sensorless to execute a python
@@ -29,8 +30,8 @@ variables, making your workflow faster and more reliable.
    ```sh
    cargo build --release
    ```
-4. (Optional) Install [uv](https://github.com/astral-sh/uv) if not already present. The tool will attempt to install it
-   if missing.
+4. (Optional) Install [uv](https://github.com/astral-sh/uv) if not already present. The tool will give a hint to install
+   it if uv is essential to be called.
 
 ## Usage
 
@@ -44,22 +45,49 @@ py_executer <SCRIPT_PATH> [OPTIONS]
 
 ### Options
 
-- `-v`, `--venv <VENV_PATH>`: Specify a custom virtual environment path. If set, this path is used directly (not managed
-  by uv), requirements.txt is not installed, and clean mode is ignored.
+- `-v`, `--venv <VENV_PATH>`: Specify a custom virtual environment path. If set, this venv will be used directly (not
+  managed
+  by uv), requirements.txt will not be installed, and clean mode will be ignored.
 - `-E`, `--env <KEY=VALUE>`: Additional environment variables in the format KEY=VALUE. Can be used multiple times.
 - `-e`, `--env-file <ENV_FILE>`: Path to a .env file (default: `.env` in the current directory).
-- `--quiet`: Suppress output.
+- `--quiet`: Suppress output from the CLI.
 - `--clean`: Clean the created uv-managed .venv and config files after execution. Pre-existing files are not deleted.
 - `-A`, `--py-arg <ARGs>`: Additional arguments to pass to the Python script. Must be placed as the last argument(s) and
-  are passed directly to Python.
+  will be passed directly to Python.
 
 ### Example
 
+#### minimum usage
+
 ```sh
-py_executer my_script.py -E DEBUG=true -A --input data.txt
-# this will be equivalent to:
-# python3 my_script.py --input data.txt
-# with DEBUG set to true
+py_executer my_script.py
+```
+
+this will be equivalent to:
+
+```sh
+uv init --bare
+uv venv
+uv add -r requirements.txt
+export $(grep -v '^#' .env | xargs)  # if .env exists
+PYTHONPATH=$PYTHONPATH:$(pwd)
+uv run --python .venv/bin/python my_script.py
+```
+
+#### more customized options
+
+```sh
+py_executer my_script.py -v venv -e .env -E DEBUG=true -A --input data.txt
+```
+
+this will be equivalent to:
+
+```sh
+source venv/bin/activate
+export $(grep -v '^#' .env | xargs)
+PYTHONPATH=$PYTHONPATH:$(pwd)
+DEBUG=true
+python3 my_script.py --input data.txt
 ```
 
 ## Project Structure
