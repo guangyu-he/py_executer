@@ -90,17 +90,10 @@ fn setup_environment(args: &Args, script_parent_path: &PathBuf) -> (PathBuf, Str
     };
     from_path(dotenv_path).ok();
     // load venv
-    let venv_path = match venv(args.venv.clone(), &script_parent_path, args.quiet) {
+    let (venv_path, uv_path) = match venv(args.venv.clone(), &script_parent_path, args.quiet) {
         Ok(venv_path) => venv_path,
         Err(e) => {
             error_println!("Failed to get venv path with error: {}", e);
-            process::exit(1);
-        }
-    };
-    let uv_path = match get_uv_path() {
-        Ok(uv_path) => uv_path,
-        Err(e) => {
-            error_println!("Failed to get uv path with error: {}", e);
             process::exit(1);
         }
     };
@@ -118,6 +111,11 @@ fn construct_command(
     has_custom_venv: bool,
 ) -> Command {
     let python_exec_path = get_python_exec_path(&venv_path);
+
+    if !has_custom_venv && uv_path.is_empty() {
+        panic!("No venv provided while uv path is empty");
+    }
+
     if has_custom_venv {
         let mut command = Command::new(python_exec_path);
         command

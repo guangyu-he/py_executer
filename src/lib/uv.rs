@@ -131,8 +131,9 @@ pub fn venv(
     venv_path_from_arg: Option<PathBuf>,
     script_parent_path: &PathBuf,
     quiet: bool,
-) -> Result<PathBuf> {
+) -> Result<(PathBuf, String)> {
     let mut venv_path = PathBuf::new();
+    let mut uv_path = "".to_string();
 
     if let Some(venv_path_from_arg) = venv_path_from_arg {
         if venv_path_from_arg.exists() {
@@ -169,6 +170,7 @@ pub fn venv(
     }
 
     if !venv_path.exists() {
+        uv_path = get_uv_path()?;
         prepare_uv_project(&script_parent_path, quiet)?;
         venv_path = script_parent_path.join(".venv");
         if !venv_path.exists() {
@@ -189,5 +191,5 @@ pub fn venv(
         }
     }
 
-    Ok(venv_path)
+    Ok((venv_path, uv_path))
 }
