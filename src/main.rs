@@ -2,6 +2,7 @@ use clap::Parser;
 use colored::*;
 use dotenv::from_path;
 use py_executer_lib::macros::error_println;
+use py_executer_lib::path::parse_and_validate_script_path;
 use py_executer_lib::utils::{get_python_exec_path, set_additional_env_var};
 use py_executer_lib::uv::venv;
 use py_executer_lib::warning_println;
@@ -48,27 +49,6 @@ struct Args {
 }
 
 /// Handle argument parsing and validation
-fn parse_and_validate_args() -> (Args, PathBuf) {
-    let args = Args::parse();
-    let script_path = args.script.clone();
-    // check script path
-    if !script_path.exists() {
-        error_println!("{} not exists", script_path.display().to_string().bold());
-        process::exit(1);
-    }
-    let script_path = match script_path.canonicalize() {
-        Ok(script_path) => script_path,
-        Err(err) => {
-            error_println!(
-                "Failed to get absolute path of {}: {}",
-                script_path.display().to_string().bold(),
-                err
-            );
-            process::exit(1);
-        }
-    };
-    (args, script_path)
-}
 
 /// Setup environment variables, dotenv, pythonpath, and venv
 fn setup_environment(args: &Args, script_parent_path: &PathBuf) -> (PathBuf, String) {
@@ -184,17 +164,18 @@ fn stream_output(mut child: std::process::Child) -> process::ExitCode {
 }
 
 fn main() -> process::ExitCode {
-    let (args, script_path) = parse_and_validate_args();
-    let quiet = args.quiet;
-    let has_custom_venv = args.venv.is_some();
+    let args = Args::parse();
 
-    let script_parent_path = match script_path.parent() {
-        Some(script_parent_path) => script_parent_path.to_path_buf(),
-        None => {
-            error_println!("Failed to get script parent directory");
+    let (script_path, script_parent_path) = match parse_and_validate_script_path(&args.script) {
+        Ok(script_path) => script_path,
+        Err(e) => {
+            error_println!("{}", e);
             process::exit(1);
         }
     };
+
+    let quiet = args.quiet;
+    let has_custom_venv = args.venv.is_some();
 
     let clean = args.clean;
     let mut files_to_clean: Vec<PathBuf> = Vec::new();
