@@ -19,25 +19,29 @@ variables, making your workflow faster and more reliable.
 
 ## Installation
 
-1. Install [Rust](https://www.rust-lang.org/tools/install)
-   and [Cargo](https://doc.rust-lang.org/cargo/getting-started/installation.html).
-2. Clone this repository:
+make sure you have [rust](https://www.rust-lang.org) and [uv](https://github.com/astral-sh/uv) installed
+
+### from source
+
+1. Clone this repository:
    ```sh
    git clone https://github.com/guangyu-he/py_executer
    cd py_executer
    ```
-3. Build the project:
+2. Build the project and try:
    ```sh
    cargo build --release
    ```
-4. Or simply install the binary:
+3. Or install the binary:
+    ```sh
+    cargo install --path .
+    ```
+
+## from crates.io
 
 ```sh
-    cargo install --path .
+cargo install py_executer
 ```
-
-5. (Optional) Install [uv](https://github.com/astral-sh/uv) if not already present. The tool will give a hint to install
-   it if uv is essential to be called.
 
 ## Usage
 
