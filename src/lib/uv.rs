@@ -135,13 +135,6 @@ fn use_uv_venv(
 ) -> Result<(PathBuf, Vec<PathBuf>)> {
     let current_dir = env::current_dir()?;
 
-    prepare_uv_project(&current_dir, quiet)?;
-    let venv_path = current_dir.join(".venv");
-    if !venv_path.exists() {
-        prepare_venv(&venv_path, quiet)?;
-    }
-    install_requirements(&venv_path, &current_dir.join("requirements.txt"), quiet)?;
-
     if clean {
         let original_venv = current_dir.join(".venv");
         if !original_venv.exists() {
@@ -161,6 +154,13 @@ fn use_uv_venv(
             files_to_clean.push(uv_lock_path);
         }
     }
+
+    prepare_uv_project(&current_dir, quiet)?;
+    let venv_path = current_dir.join(".venv");
+    if !venv_path.exists() {
+        prepare_venv(&venv_path, quiet)?;
+    }
+    install_requirements(&venv_path, &current_dir.join("requirements.txt"), quiet)?;
 
     Ok((venv_path, files_to_clean.to_vec()))
 }

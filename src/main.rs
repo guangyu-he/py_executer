@@ -188,20 +188,12 @@ fn main() -> process::ExitCode {
     if !files_to_clean.is_empty() {
         for path in files_to_clean.iter() {
             if path.is_dir() {
-                if let Err(e) = std::fs::remove_dir_all(path) {
-                    error_println!(
-                        "Failed to delete {}: {}",
-                        path.display().to_string().bold(),
-                        e.to_string().bold()
-                    );
+                if let Err(_) = std::fs::remove_dir_all(path) {
+                    ();
                 }
             } else {
-                if let Err(e) = std::fs::remove_file(path) {
-                    error_println!(
-                        "Failed to delete {}: {}",
-                        path.display().to_string().bold(),
-                        e.to_string().bold()
-                    );
+                if let Err(_) = std::fs::remove_file(path) {
+                    ();
                 }
             }
         }
