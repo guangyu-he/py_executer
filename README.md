@@ -30,7 +30,13 @@ variables, making your workflow faster and more reliable.
    ```sh
    cargo build --release
    ```
-4. (Optional) Install [uv](https://github.com/astral-sh/uv) if not already present. The tool will give a hint to install
+4. Or simply install the binary:
+
+```sh
+    cargo install --path .
+```
+
+5. (Optional) Install [uv](https://github.com/astral-sh/uv) if not already present. The tool will give a hint to install
    it if uv is essential to be called.
 
 ## Usage
@@ -45,9 +51,9 @@ py_executer <SCRIPT_PATH> [OPTIONS]
 
 ### Options
 
-- `-v`, `--venv <VENV_PATH>`: Specify a custom virtual environment path. If set, this venv will be used directly (not
-  managed
-  by uv), requirements.txt will not be installed, and clean mode will be ignored.
+- `-v`, `--venv <VENV_PATH>`: Specify a custom virtual environment path (default: `.venv` or `venv`). If a valid venv is
+  present, this venv will be used directly (not managed by uv), requirements.txt will not be installed, and clean mode
+  will be ignored.
 - `-E`, `--env <KEY=VALUE>`: Additional environment variables in the format KEY=VALUE. Can be used multiple times.
 - `-e`, `--env-file <ENV_FILE>`: Path to a .env file (default: `.env` in the current directory).
 - `--quiet`: Suppress output from the CLI.
@@ -58,6 +64,15 @@ py_executer <SCRIPT_PATH> [OPTIONS]
 ### Example
 
 #### minimum usage
+
+assume there is a project like this:
+
+```
+project/
+├── myscript.py
+├── requirements.txt
+└── .env
+```
 
 ```sh
 py_executer my_script.py
@@ -71,23 +86,36 @@ uv venv
 uv add -r requirements.txt
 export $(grep -v '^#' .env | xargs)  # if .env exists
 PYTHONPATH=$PYTHONPATH:$(pwd)
-uv run --python .venv/bin/python my_script.py
+.venv/bin/python my_script.py
 ```
+
+after the execution, the script will create uv project files
+
+```
+project/
+├── myscript.py
+├── requirements.txt
+├── .env
+├── uv.lock
+├── .venv/
+└── pyproject.toml
+```
+
+to clean up generated files afterward, you can add `--clean` in the argument
 
 #### more customized options
 
 ```sh
-py_executer my_script.py -v venv -e .env -E DEBUG=true -A --input data.txt
+py_executer my_script.py -v venv -E DEBUG=true -A --input data.txt
 ```
 
 this will be equivalent to:
 
 ```sh
-source venv/bin/activate
 export $(grep -v '^#' .env | xargs)
 PYTHONPATH=$PYTHONPATH:$(pwd)
 DEBUG=true
-python3 my_script.py --input data.txt
+venv/bin/python3 my_script.py --input data.txt
 ```
 
 ## Project Structure
