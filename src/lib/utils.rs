@@ -44,10 +44,12 @@ pub fn set_additional_env_var(
                 println!("Setting env: {} = {}", key.bold(), value);
             }
         } else {
-            warning_println!(
-                "Warning: Ignoring malformed environment variable: {}",
-                env_var.bold()
-            );
+            if !quiet {
+                warning_println!(
+                    "Warning: Ignoring malformed environment variable: {}",
+                    env_var.bold()
+                );
+            }
         }
     }
     additional_env

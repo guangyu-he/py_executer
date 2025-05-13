@@ -55,11 +55,13 @@ fn setup_environment(args: &Args) -> (PathBuf, Vec<PathBuf>) {
         match &args.env_file.canonicalize() {
             Ok(path) => &path.clone(),
             Err(err) => {
-                warning_println!(
-                    "{} not exists, {}",
-                    args.env_file.display().to_string().bold(),
-                    err
-                );
+                if !args.quiet {
+                    warning_println!(
+                        "{} not exists, {}",
+                        args.env_file.display().to_string().bold(),
+                        err
+                    );
+                }
                 &PathBuf::from("")
             }
         }
@@ -164,9 +166,12 @@ fn main() -> process::ExitCode {
         }
 
         if clean && !files_to_clean.is_empty() {
-            warning_println!(
-                "These following files will be deleted because you activate clean mode"
-            );
+            if !quiet {
+                warning_println!(
+                    "These following files will be deleted because you activate clean mode"
+                );
+            }
+
             for path in &files_to_clean {
                 println!("{}", path.display().to_string().bold());
             }

@@ -177,23 +177,25 @@ pub fn venv(
         if venv_path_from_arg.to_str().unwrap_or("") == ".venv" {
             // means using default .venv
             // then try alternative venv
-            warning_println!("No .venv found in current directory, trying venv");
+            if !quiet {
+                warning_println!("No .venv found in current directory, trying venv");
+            }
             let venv_path_alternate = current_dir.join("venv");
             if venv_path_alternate.exists() {
-                if clean {
+                if clean && !quiet {
                     warning_println!("Clean mode is not activated when using existing venv");
                 }
-                if current_dir.join("requirements.txt").exists() {
-                    if !quiet {
-                        warning_println!(
-                            "You are about to use an existing venv, it is not possible for now to install requirements.txt on it"
-                        );
-                    }
+                if current_dir.join("requirements.txt").exists() && !quiet {
+                    warning_println!(
+                        "You are about to use an existing venv, it is not possible for now to install requirements.txt on it"
+                    );
                 }
                 return Ok((venv_path_alternate, files_to_clean));
             }
         }
-        warning_println!("Can not find default venv paths, creating .venv using uv",);
+        if !quiet {
+            warning_println!("No venv found in current directory, trying uv");
+        }
         let (venv_path, files_to_clean) = use_uv_venv(quiet, clean, &mut files_to_clean)?;
         return Ok((venv_path, files_to_clean));
     }
@@ -210,7 +212,7 @@ pub fn venv(
         }
     };
 
-    if clean {
+    if clean && !quiet {
         warning_println!("Clean mode is not activated when using existing venv");
     }
     if current_dir.join("requirements.txt").exists() {
