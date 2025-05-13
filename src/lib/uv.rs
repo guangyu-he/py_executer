@@ -169,9 +169,8 @@ pub fn venv(
     venv_path_from_arg: &PathBuf,
     quiet: bool,
     clean: bool,
-) -> Result<(PathBuf, String, Vec<PathBuf>)> {
+) -> Result<(PathBuf, Vec<PathBuf>)> {
     let current_dir = env::current_dir()?;
-    let uv_path = get_uv_path()?;
     let mut files_to_clean: Vec<PathBuf> = Vec::new();
 
     if !venv_path_from_arg.exists() {
@@ -191,12 +190,12 @@ pub fn venv(
                         );
                     }
                 }
-                return Ok((venv_path_alternate, uv_path, files_to_clean));
+                return Ok((venv_path_alternate, files_to_clean));
             }
         }
         warning_println!("Can not find default venv paths, creating .venv using uv",);
         let (venv_path, files_to_clean) = use_uv_venv(quiet, clean, &mut files_to_clean)?;
-        return Ok((venv_path, uv_path, files_to_clean));
+        return Ok((venv_path, files_to_clean));
     }
 
     // provided venv exists (either default .venv or custom venv)
@@ -221,5 +220,5 @@ pub fn venv(
             );
         }
     }
-    Ok((venv_path_from_arg_absolute, uv_path, files_to_clean))
+    Ok((venv_path_from_arg_absolute, files_to_clean))
 }

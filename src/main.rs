@@ -47,7 +47,7 @@ struct Args {
     py_arg: Vec<String>,
 }
 
-fn setup_environment(args: &Args) -> (PathBuf, String, Vec<PathBuf>) {
+fn setup_environment(args: &Args) -> (PathBuf, Vec<PathBuf>) {
     let dotenv_path = if args.env_file.exists() {
         &args.env_file
     } else {
@@ -67,30 +67,26 @@ fn setup_environment(args: &Args) -> (PathBuf, String, Vec<PathBuf>) {
     from_path(dotenv_path).ok();
 
     // load venv
-    let (venv_path, uv_path, files_to_clean) = match venv(&args.venv, args.quiet, args.clean) {
+    let (venv_path, files_to_clean) = match venv(&args.venv, args.quiet, args.clean) {
         Ok(venv_path) => venv_path,
         Err(e) => {
             error_println!("Failed to get venv path with error: {}", e);
             process::exit(1);
         }
     };
-    (venv_path, uv_path, files_to_clean)
+    (venv_path, files_to_clean)
 }
 
 /// Construct the command to run the Python script
 fn construct_command(
-    uv_path: &String,
     venv_path: &PathBuf,
-    script_parent_path: &PathBuf,
     script_path: &PathBuf,
     python_args: &[String],
     additional_env: &std::collections::HashMap<String, String>,
 ) -> Command {
-    let mut command = Command::new(uv_path);
+    let mut command = Command::new(get_python_exec_path(venv_path));
     command
-        .arg("run")
-        .args(["--python", get_python_exec_path(&venv_path).as_str()])
-        .arg(&script_parent_path.join(script_path))
+        .arg(&script_path)
         .args(python_args)
         .envs(env::vars())
         .envs(additional_env)
@@ -141,7 +137,7 @@ fn stream_output(mut child: std::process::Child) -> process::ExitCode {
 fn main() -> process::ExitCode {
     let args = Args::parse();
 
-    let (script_path, script_parent_path) = match parse_and_validate_script_path(&args.script) {
+    let script_path = match parse_and_validate_script_path(&args.script) {
         Ok(script_path) => script_path,
         Err(e) => {
             error_println!("{}", e);
@@ -152,16 +148,12 @@ fn main() -> process::ExitCode {
     let quiet = args.quiet;
     let clean = args.clean;
 
-    let (venv_path, uv_path, files_to_clean) = setup_environment(&args);
+    let (venv_path, files_to_clean) = setup_environment(&args);
     if !quiet {
         println!("Using venv: {}", venv_path.display().to_string().bold());
         println!(
             "Executing script: {}",
-            script_parent_path
-                .join(&script_path)
-                .display()
-                .to_string()
-                .bold()
+            &script_path.display().to_string().bold()
         );
     }
     let additional_env = set_additional_env_var(args.env.clone(), quiet);
@@ -182,14 +174,7 @@ fn main() -> process::ExitCode {
 
         println!("-------------------------------");
     }
-    let mut command = construct_command(
-        &uv_path,
-        &venv_path,
-        &script_parent_path,
-        &script_path,
-        &python_args,
-        &additional_env,
-    );
+    let mut command = construct_command(&venv_path, &script_path, &python_args, &additional_env);
     let child = command.spawn().unwrap_or_else(|e| {
         error_println!("Failed to execute Python script: {}", e.to_string().bold());
         process::exit(1);

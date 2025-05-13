@@ -13,22 +13,13 @@ use std::path::PathBuf;
 ///
 /// The function returns an `Err` if the path does not exist or if the parent directory
 /// cannot be obtained.
-pub fn parse_and_validate_script_path(script_path: &PathBuf) -> Result<(PathBuf, PathBuf)> {
+pub fn parse_and_validate_script_path(script_path: &PathBuf) -> Result<PathBuf> {
     match script_path.canonicalize() {
         Ok(path) => {
             if !path.exists() {
                 return Err(anyhow!("{} not exists", path.display().to_string().bold()));
             }
-            let parent_path = match path.clone().parent() {
-                Some(parent_path) => parent_path.to_path_buf(),
-                None => {
-                    return Err(anyhow!(
-                        "Failed to get parent directory for script {}",
-                        path.display().to_string().bold()
-                    ));
-                }
-            };
-            Ok((path, parent_path))
+            Ok(path)
         }
         Err(err) => Err(anyhow!("Failed to get absolute path of script: {}", err)),
     }
