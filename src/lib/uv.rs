@@ -132,19 +132,18 @@ fn use_uv_venv(
     quiet: bool,
     clean: bool,
     files_to_clean: &mut Vec<PathBuf>,
-) -> Result<(PathBuf, String, Vec<PathBuf>)> {
+) -> Result<(PathBuf, Vec<PathBuf>)> {
     let current_dir = env::current_dir()?;
 
     prepare_uv_project(&current_dir, quiet)?;
-    let venv_path = current_dir.join(".venv");
+    let venv_path = current_dir.join("../../venv");
     if !venv_path.exists() {
         prepare_venv(&venv_path, quiet)?;
     }
     install_requirements(&venv_path, &current_dir.join("requirements.txt"), quiet)?;
 
-    let uv_path = get_uv_path()?;
     if clean {
-        let original_venv = current_dir.join(".venv");
+        let original_venv = current_dir.join("../../venv");
         if !original_venv.exists() {
             // means originally .venv does not exist
             files_to_clean.push(original_venv);
@@ -163,7 +162,7 @@ fn use_uv_venv(
         }
     }
 
-    Ok((venv_path, uv_path, files_to_clean.to_vec()))
+    Ok((venv_path, files_to_clean.to_vec()))
 }
 
 pub fn venv(
@@ -172,6 +171,7 @@ pub fn venv(
     clean: bool,
 ) -> Result<(PathBuf, String, Vec<PathBuf>)> {
     let current_dir = env::current_dir()?;
+    let uv_path = get_uv_path()?;
     let mut files_to_clean: Vec<PathBuf> = Vec::new();
 
     if !venv_path_from_arg.exists() {
@@ -191,11 +191,12 @@ pub fn venv(
                         );
                     }
                 }
-                return Ok((venv_path_alternate, "".to_string(), files_to_clean));
+                return Ok((venv_path_alternate, uv_path, files_to_clean));
             }
         }
         warning_println!("Can not find default venv paths, creating .venv using uv",);
-        return use_uv_venv(quiet, clean, &mut files_to_clean);
+        let (venv_path, files_to_clean) = use_uv_venv(quiet, clean, &mut files_to_clean)?;
+        return Ok((venv_path, uv_path, files_to_clean));
     }
 
     // provided venv exists (either default .venv or custom venv)
@@ -220,5 +221,5 @@ pub fn venv(
             );
         }
     }
-    Ok((venv_path_from_arg_absolute, "".to_string(), files_to_clean))
+    Ok((venv_path_from_arg_absolute, uv_path, files_to_clean))
 }
