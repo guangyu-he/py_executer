@@ -136,14 +136,14 @@ fn use_uv_venv(
     let current_dir = env::current_dir()?;
 
     prepare_uv_project(&current_dir, quiet)?;
-    let venv_path = current_dir.join("../../venv");
+    let venv_path = current_dir.join(".venv");
     if !venv_path.exists() {
         prepare_venv(&venv_path, quiet)?;
     }
     install_requirements(&venv_path, &current_dir.join("requirements.txt"), quiet)?;
 
     if clean {
-        let original_venv = current_dir.join("../../venv");
+        let original_venv = current_dir.join(".venv");
         if !original_venv.exists() {
             // means originally .venv does not exist
             files_to_clean.push(original_venv);
