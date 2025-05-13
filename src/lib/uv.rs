@@ -1,5 +1,7 @@
 use crate::warning_println;
-use anyhow::{Result, anyhow};
+use anyhow::{anyhow, Result};
+use colored::*;
+use std::env;
 use std::path::PathBuf;
 use std::process::{Command, Stdio};
 
@@ -127,49 +129,96 @@ fn install_requirements(
 }
 
 pub fn venv(
-    venv_path_from_arg: Option<PathBuf>,
-    script_parent_path: &PathBuf,
+    venv_path_from_arg: &PathBuf,
     quiet: bool,
-) -> Result<(PathBuf, String)> {
-    let mut venv_path = PathBuf::new();
-    let mut uv_path = "".to_string();
+    clean: bool,
+) -> Result<(PathBuf, String, Vec<PathBuf>)> {
+    let current_dir = env::current_dir()?;
+    let mut files_to_clean: Vec<PathBuf> = Vec::new();
 
-    if let Some(venv_path_from_arg) = venv_path_from_arg {
-        if venv_path_from_arg.exists() {
-            // if venv_path input from arg is exist, return it as a string
-            venv_path = venv_path_from_arg;
-        } else {
-            // if venv_path input from arg is not exist, continue
-            if !quiet {
-                warning_println!(
-                    "Venv provided {} does not exist. Will use uv to manage venv",
-                    venv_path_from_arg.display()
-                );
-            }
+    let venv_path_from_arg_absolute = match venv_path_from_arg.canonicalize() {
+        Ok(path) => path,
+        Err(err) => {
+            return Err(anyhow!(
+                "Can not get absolute path of {} , {}",
+                venv_path_from_arg.display().to_string().bold(),
+                err
+            ));
         }
-    }
+    };
 
-    if !venv_path.exists() {
-        uv_path = get_uv_path()?;
-        prepare_uv_project(&script_parent_path, quiet)?;
-        venv_path = script_parent_path.join(".venv");
-        if !venv_path.exists() {
-            prepare_venv(&venv_path, quiet)?;
+    if venv_path_from_arg_absolute.exists() {
+        if clean {
+            warning_println!("Clean mode is not activated when using existing venv");
         }
-        install_requirements(
-            &venv_path,
-            &script_parent_path.join("requirements.txt"),
-            quiet,
-        )?;
-    } else {
-        if script_parent_path.join("requirements.txt").exists() {
+        if current_dir.join("requirements.txt").exists() {
             if !quiet {
                 warning_println!(
                     "You are about to use an existing venv, it is not possible for now to install requirements.txt on it"
                 );
             }
         }
+        return Ok((venv_path_from_arg_absolute, "".to_string(), files_to_clean));
     }
 
-    Ok((venv_path, uv_path))
+    if venv_path_from_arg.to_str().unwrap_or("") == ".venv" {
+        // using the default venv path
+        // if this is not working, try using "venv"
+        let venv_path_parent = match venv_path_from_arg_absolute.parent() {
+            Some(path) => path.to_path_buf(),
+            None => {
+                return Err(anyhow!(
+                    "Can not get parent path of {}",
+                    venv_path_from_arg.display().to_string().bold()
+                ));
+            }
+        };
+        let venv_path_alternate = venv_path_parent.join("venv");
+
+        if venv_path_alternate.exists() {
+            if clean {
+                warning_println!("Clean mode is not activated when using existing venv");
+            }
+            if current_dir.join("requirements.txt").exists() {
+                if !quiet {
+                    warning_println!(
+                        "You are about to use an existing venv, it is not possible for now to install requirements.txt on it"
+                    );
+                }
+            }
+            return Ok((venv_path_alternate, "".to_string(), files_to_clean));
+        }
+    }
+
+    // no valid venv provided, using uv to create a new one
+    let current_dir = env::current_dir()?;
+    prepare_uv_project(&current_dir, quiet)?;
+    let venv_path = current_dir.join(".venv");
+    if !venv_path.exists() {
+        prepare_venv(&venv_path, quiet)?;
+    }
+    install_requirements(&venv_path, &current_dir.join("requirements.txt"), quiet)?;
+
+    let uv_path = get_uv_path()?;
+    if clean {
+        let original_venv = current_dir.join(".venv");
+        if !original_venv.exists() {
+            // means originally .venv does not exist
+            files_to_clean.push(original_venv);
+        }
+
+        let pyproject_toml_path = current_dir.join("pyproject.toml");
+        if !pyproject_toml_path.exists() {
+            // means originally pyproject.toml does not exist
+            files_to_clean.push(pyproject_toml_path);
+        }
+
+        let uv_lock_path = current_dir.join("uv.lock");
+        if !uv_lock_path.exists() {
+            // means originally uv.lock does not exist
+            files_to_clean.push(uv_lock_path);
+        }
+    }
+
+    Ok((venv_path, uv_path, files_to_clean))
 }

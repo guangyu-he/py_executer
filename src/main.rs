@@ -18,12 +18,11 @@ struct Args {
     #[clap(index = 1)]
     script: PathBuf,
 
-    /// Venv path, can be also pre-defined by PYTHON_VENV_PATH,
-    /// if specified, it will be used directly without managed by uv
+    /// If there is a valid venv provided, it will be used directly without managed by uv
     /// clean mode is not an option and will be ignored
     /// requirements.txt will not be installed
-    #[clap(short, long)]
-    venv: Option<PathBuf>,
+    #[clap(short, long, default_value = ".venv")]
+    venv: PathBuf,
 
     /// Additional environment variables in the format KEY=VALUE (can be used multiple times)
     #[clap(short = 'E', long)]
@@ -48,17 +47,12 @@ struct Args {
     py_arg: Vec<String>,
 }
 
-/// Handle argument parsing and validation
-
-/// Setup environment variables, dotenv, pythonpath, and venv
-fn setup_environment(args: &Args, script_parent_path: &PathBuf) -> (PathBuf, String) {
-    // prepare dotenv path
+fn setup_environment(args: &Args) -> (PathBuf, String, Vec<PathBuf>) {
     let dotenv_path = if args.env_file.exists() {
         &args.env_file
     } else {
         // try using absolute path
-        let env_file_path = &args.env_file;
-        match env_file_path.canonicalize() {
+        match &args.env_file.canonicalize() {
             Ok(path) => &path.clone(),
             Err(err) => {
                 warning_println!(
@@ -73,14 +67,14 @@ fn setup_environment(args: &Args, script_parent_path: &PathBuf) -> (PathBuf, Str
     from_path(dotenv_path).ok();
 
     // load venv
-    let (venv_path, uv_path) = match venv(args.venv.clone(), &script_parent_path, args.quiet) {
+    let (venv_path, uv_path, files_to_clean) = match venv(&args.venv, args.quiet, args.clean) {
         Ok(venv_path) => venv_path,
         Err(e) => {
             error_println!("Failed to get venv path with error: {}", e);
             process::exit(1);
         }
     };
-    (venv_path, uv_path)
+    (venv_path, uv_path, files_to_clean)
 }
 
 /// Construct the command to run the Python script
@@ -91,37 +85,18 @@ fn construct_command(
     script_path: &PathBuf,
     python_args: &[String],
     additional_env: &std::collections::HashMap<String, String>,
-    has_custom_venv: bool,
 ) -> Command {
-    let python_exec_path = get_python_exec_path(&venv_path);
-
-    if !has_custom_venv && uv_path.is_empty() {
-        panic!("No venv provided while uv path is empty");
-    }
-
-    if has_custom_venv {
-        let mut command = Command::new(python_exec_path);
-        command
-            .arg(&script_parent_path.join(script_path))
-            .args(python_args)
-            .envs(env::vars())
-            .envs(additional_env)
-            .stdout(Stdio::piped())
-            .stderr(Stdio::piped());
-        command
-    } else {
-        let mut command = Command::new(uv_path);
-        command
-            .arg("run")
-            .args(["--python", python_exec_path.as_str()])
-            .arg(&script_parent_path.join(script_path))
-            .args(python_args)
-            .envs(env::vars())
-            .envs(additional_env)
-            .stdout(Stdio::piped())
-            .stderr(Stdio::piped());
-        command
-    }
+    let mut command = Command::new(uv_path);
+    command
+        .arg("run")
+        .args(["--python", get_python_exec_path(&venv_path).as_str()])
+        .arg(&script_parent_path.join(script_path))
+        .args(python_args)
+        .envs(env::vars())
+        .envs(additional_env)
+        .stdout(Stdio::piped())
+        .stderr(Stdio::piped());
+    command
 }
 
 /// Stream output from child process stdout and stderr
@@ -175,36 +150,9 @@ fn main() -> process::ExitCode {
     };
 
     let quiet = args.quiet;
-    let has_custom_venv = args.venv.is_some();
-
     let clean = args.clean;
-    let mut files_to_clean: Vec<PathBuf> = Vec::new();
 
-    if clean && has_custom_venv {
-        warning_println!("Clean mode is not activated when using custom venv");
-    }
-
-    if clean && !has_custom_venv {
-        let original_venv = script_parent_path.join(".venv");
-        if !original_venv.exists() {
-            // means originally .venv does not exist
-            files_to_clean.push(original_venv);
-        }
-
-        let pyproject_toml_path = script_parent_path.join("pyproject.toml");
-        if !pyproject_toml_path.exists() {
-            // means originally pyproject.toml does not exist
-            files_to_clean.push(pyproject_toml_path);
-        }
-
-        let uv_lock_path = script_parent_path.join("uv.lock");
-        if !uv_lock_path.exists() {
-            // means originally uv.lock does not exist
-            files_to_clean.push(uv_lock_path);
-        }
-    }
-
-    let (venv_path, uv_path) = setup_environment(&args, &script_parent_path);
+    let (venv_path, uv_path, files_to_clean) = setup_environment(&args);
     if !quiet {
         println!("Using venv: {}", venv_path.display().to_string().bold());
         println!(
@@ -241,7 +189,6 @@ fn main() -> process::ExitCode {
         &script_path,
         &python_args,
         &additional_env,
-        has_custom_venv,
     );
     let child = command.spawn().unwrap_or_else(|e| {
         error_println!("Failed to execute Python script: {}", e.to_string().bold());
