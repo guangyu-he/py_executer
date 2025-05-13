@@ -128,70 +128,13 @@ fn install_requirements(
     }
 }
 
-pub fn venv(
-    venv_path_from_arg: &PathBuf,
+fn use_uv_venv(
     quiet: bool,
     clean: bool,
+    files_to_clean: &mut Vec<PathBuf>,
 ) -> Result<(PathBuf, String, Vec<PathBuf>)> {
     let current_dir = env::current_dir()?;
-    let mut files_to_clean: Vec<PathBuf> = Vec::new();
 
-    let venv_path_from_arg_absolute = match venv_path_from_arg.canonicalize() {
-        Ok(path) => path,
-        Err(err) => {
-            return Err(anyhow!(
-                "Can not get absolute path of {} , {}",
-                venv_path_from_arg.display().to_string().bold(),
-                err
-            ));
-        }
-    };
-
-    if venv_path_from_arg_absolute.exists() {
-        if clean {
-            warning_println!("Clean mode is not activated when using existing venv");
-        }
-        if current_dir.join("requirements.txt").exists() {
-            if !quiet {
-                warning_println!(
-                    "You are about to use an existing venv, it is not possible for now to install requirements.txt on it"
-                );
-            }
-        }
-        return Ok((venv_path_from_arg_absolute, "".to_string(), files_to_clean));
-    }
-
-    if venv_path_from_arg.to_str().unwrap_or("") == ".venv" {
-        // using the default venv path
-        // if this is not working, try using "venv"
-        let venv_path_parent = match venv_path_from_arg_absolute.parent() {
-            Some(path) => path.to_path_buf(),
-            None => {
-                return Err(anyhow!(
-                    "Can not get parent path of {}",
-                    venv_path_from_arg.display().to_string().bold()
-                ));
-            }
-        };
-        let venv_path_alternate = venv_path_parent.join("venv");
-
-        if venv_path_alternate.exists() {
-            if clean {
-                warning_println!("Clean mode is not activated when using existing venv");
-            }
-            if current_dir.join("requirements.txt").exists() {
-                if !quiet {
-                    warning_println!(
-                        "You are about to use an existing venv, it is not possible for now to install requirements.txt on it"
-                    );
-                }
-            }
-            return Ok((venv_path_alternate, "".to_string(), files_to_clean));
-        }
-    }
-
-    // no valid venv provided, using uv to create a new one
-    let current_dir = env::current_dir()?;
     prepare_uv_project(&current_dir, quiet)?;
     let venv_path = current_dir.join(".venv");
     if !venv_path.exists() {
@@ -220,5 +163,62 @@ pub fn venv(
         }
     }
 
-    Ok((venv_path, uv_path, files_to_clean))
+    Ok((venv_path, uv_path, files_to_clean.to_vec()))
+}
+
+pub fn venv(
+    venv_path_from_arg: &PathBuf,
+    quiet: bool,
+    clean: bool,
+) -> Result<(PathBuf, String, Vec<PathBuf>)> {
+    let current_dir = env::current_dir()?;
+    let mut files_to_clean: Vec<PathBuf> = Vec::new();
+
+    if !venv_path_from_arg.exists() {
+        if venv_path_from_arg.to_str().unwrap_or("") == ".venv" {
+            // means using default .venv
+            // then try alternative venv
+            warning_println!("No .venv found in current directory, trying venv");
+            let venv_path_alternate = current_dir.join("venv");
+            if venv_path_alternate.exists() {
+                if clean {
+                    warning_println!("Clean mode is not activated when using existing venv");
+                }
+                if current_dir.join("requirements.txt").exists() {
+                    if !quiet {
+                        warning_println!(
+                            "You are about to use an existing venv, it is not possible for now to install requirements.txt on it"
+                        );
+                    }
+                }
+                return Ok((venv_path_alternate, "".to_string(), files_to_clean));
+            }
+        }
+        warning_println!("Can not find default venv paths, creating .venv using uv",);
+        return use_uv_venv(quiet, clean, &mut files_to_clean);
+    }
+
+    // provided venv exists (either default .venv or custom venv)
+    let venv_path_from_arg_absolute = match venv_path_from_arg.canonicalize() {
+        Ok(path) => path,
+        Err(err) => {
+            return Err(anyhow!(
+                "Can not get absolute path of {} , {}",
+                venv_path_from_arg.display().to_string().bold(),
+                err
+            ));
+        }
+    };
+
+    if clean {
+        warning_println!("Clean mode is not activated when using existing venv");
+    }
+    if current_dir.join("requirements.txt").exists() {
+        if !quiet {
+            warning_println!(
+                "You are about to use an existing venv, it is not possible for now to install requirements.txt on it"
+            );
+        }
+    }
+    Ok((venv_path_from_arg_absolute, "".to_string(), files_to_clean))
 }
