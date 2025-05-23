@@ -196,10 +196,12 @@ fn main() -> process::ExitCode {
             let venv = match validate_venv(venv) {
                 Ok(venv) => venv,
                 Err(e) => {
-                    warning_println!(
-                        "Failed to validate  provided venv: {}, looking for a possible one under current directory",
-                        e
-                    );
+                    if !quiet {
+                        warning_println!(
+                            "Failed to validate  provided venv: {}, looking for a possible one under current directory",
+                            e
+                        );
+                    }
                     let possible_venv_dir_names = ["venv", ".venv"];
                     possible_venv_dir_names
                         .iter()
@@ -303,7 +305,10 @@ fn main() -> process::ExitCode {
                 }
             }
 
-            println!("Using venv: {}", venv.display().to_string().bold());
+            if !quiet {
+                println!("Using venv: {}", venv.display().to_string().bold());
+            }
+
             // load dot env
             dotenv::from_path(env_file).ok();
             // load additional env from args
