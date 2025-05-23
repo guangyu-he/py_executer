@@ -1,15 +1,14 @@
+use anyhow::{Result, anyhow};
 use clap::Parser;
 use colored::*;
-use dotenv::from_path;
-use py_executer_lib::macros::error_println;
-use py_executer_lib::path::parse_and_validate_script_path;
-use py_executer_lib::utils::{get_python_exec_path, set_additional_env_var};
-use py_executer_lib::uv::venv;
-use py_executer_lib::warning_println;
+use std::env::current_dir;
 use std::io::{BufRead, BufReader};
 use std::path::PathBuf;
 use std::process::{Command, Stdio};
 use std::{env, process};
+
+use py_executer_lib::macros::{error_println, warning_println};
+use py_executer_lib::{get_uv_path, set_additional_env_var, validate_to_absolute_path};
 
 #[derive(Parser)]
 #[clap(author, version, about, long_about = None)]
@@ -47,58 +46,8 @@ struct Args {
     py_arg: Vec<String>,
 }
 
-fn setup_environment(args: &Args) -> (PathBuf, Vec<PathBuf>) {
-    let dotenv_path = if args.env_file.exists() {
-        &args.env_file
-    } else {
-        // try using absolute path
-        match &args.env_file.canonicalize() {
-            Ok(path) => &path.clone(),
-            Err(err) => {
-                if !args.quiet {
-                    warning_println!(
-                        "{} not exists, {}",
-                        args.env_file.display().to_string().bold(),
-                        err
-                    );
-                }
-                &PathBuf::from("")
-            }
-        }
-    };
-    from_path(dotenv_path).ok();
-
-    // load venv
-    let (venv_path, files_to_clean) = match venv(&args.venv, args.quiet, args.clean) {
-        Ok(venv_path) => venv_path,
-        Err(e) => {
-            error_println!("Failed to get venv path with error: {}", e);
-            process::exit(1);
-        }
-    };
-    (venv_path, files_to_clean)
-}
-
-/// Construct the command to run the Python script
-fn construct_command(
-    venv_path: &PathBuf,
-    script_path: &PathBuf,
-    python_args: &[String],
-    additional_env: &std::collections::HashMap<String, String>,
-) -> Command {
-    let mut command = Command::new(get_python_exec_path(venv_path));
-    command
-        .arg(&script_path)
-        .args(python_args)
-        .envs(env::vars())
-        .envs(additional_env)
-        .stdout(Stdio::piped())
-        .stderr(Stdio::piped());
-    command
-}
-
 /// Stream output from child process stdout and stderr
-fn stream_output(mut child: std::process::Child) -> process::ExitCode {
+fn stream_output(mut child: process::Child) -> process::ExitCode {
     let stdout = child.stdout.take().expect("Failed to capture stdout");
     let stdout_reader = BufReader::new(stdout);
     let stdout_lines = stdout_reader.lines();
@@ -136,56 +85,241 @@ fn stream_output(mut child: std::process::Child) -> process::ExitCode {
     }
 }
 
+fn validate_venv(venv_path: PathBuf) -> Result<PathBuf> {
+    if !venv_path.exists() {
+        Err(anyhow!("{} not exists", venv_path.display().to_string()))
+    } else {
+        let python_exec_paths = PathBuf::from(if cfg!(target_os = "windows") {
+            venv_path
+                .join("Scripts")
+                .join("python.exe")
+                .to_string_lossy()
+                .to_string()
+        } else {
+            venv_path
+                .join("bin")
+                .join("python")
+                .to_string_lossy()
+                .to_string()
+        });
+        if !python_exec_paths.exists() {
+            Err(anyhow!(
+                "Python executable {} not exists",
+                python_exec_paths.display().to_string()
+            ))
+        } else {
+            Ok(venv_path)
+        }
+    }
+}
+
 fn main() -> process::ExitCode {
     let args = Args::parse();
+    let quiet = args.quiet;
 
-    let script_path = match parse_and_validate_script_path(&args.script) {
-        Ok(script_path) => script_path,
+    if !quiet {
+        println!("------------------");
+    }
+
+    let mut files_to_clean: Vec<PathBuf> = Vec::new();
+
+    // Get the absolute path of the script and the current runtime directory
+    let script_path = validate_to_absolute_path(&args.script).unwrap_or_else(|err| {
+        error_println!("Failed to get absolute path of script: {}", err);
+        process::exit(1);
+    });
+    let runtime_path = current_dir().unwrap();
+
+    // Get uv installation information
+    let uv_path = get_uv_path().unwrap_or("".to_string());
+    if !uv_path.is_empty() {
+        // uv is installed
+        if !quiet {
+            println!("Using uv from: {}", uv_path.bold());
+        }
+    } else {
+        // uv is not installed, will try native python
+        if !quiet {
+            warning_println!("Failed to get uv path, will not use it then");
+        }
+    }
+
+    // Get python native as backup
+    let python_native_path = if uv_path.is_empty() {
+        #[cfg(not(target_os = "windows"))]
+        let find_executable = "which";
+
+        // For Windows
+        #[cfg(target_os = "windows")]
+        let find_executable = "where";
+
+        let output = Command::new(find_executable)
+            .arg("python3")
+            .output()
+            .unwrap();
+        if output.status.success() {
+            String::from_utf8(output.stdout)
+                .unwrap_or("".to_string())
+                .trim()
+                .to_string()
+        } else {
+            "".to_string()
+        }
+    } else {
+        "".to_string()
+    };
+
+    // If uv and native python are both empty, exit with error
+    if python_native_path.is_empty() && uv_path.is_empty() {
+        error_println!("Failed to get any python executable");
+        process::exit(1);
+    }
+
+    // Validate provided venv
+    // if not
+    // try to find a possible venv under current directory
+    // or create a new venv
+    let venv = match validate_venv(args.venv) {
+        Ok(venv) => venv,
         Err(e) => {
-            error_println!("{}", e);
-            process::exit(1);
+            warning_println!(
+                "Failed to validate  provided venv: {}, looking for a possible one under current directory",
+                e
+            );
+            let possible_venv_dir_names = ["venv", ".venv"];
+            possible_venv_dir_names
+                .iter()
+                .map(|name| runtime_path.join(name))
+                .find(|path| path.exists())
+                .unwrap_or_else(|| {
+                    if !quiet {
+                        warning_println!("No venv found in current directory, will generate one");
+                    }
+                    let new_venv_path = runtime_path.join(".venv");
+                    let _ = Command::new(if uv_path.is_empty() {
+                        &python_native_path
+                    } else {
+                        &uv_path
+                    })
+                    .args(["venv", &new_venv_path.to_str().unwrap()])
+                    .stdout(if quiet {
+                        Stdio::null()
+                    } else {
+                        Stdio::inherit()
+                    })
+                    .stderr(if quiet {
+                        Stdio::null()
+                    } else {
+                        Stdio::inherit()
+                    })
+                    .output()
+                    .unwrap();
+                    if args.clean {
+                        files_to_clean.push(new_venv_path.clone());
+                    }
+                    new_venv_path
+                })
         }
     };
 
-    let quiet = args.quiet;
-    let clean = args.clean;
-
-    let (venv_path, files_to_clean) = setup_environment(&args);
-    if !quiet {
-        println!("Using venv: {}", venv_path.display().to_string().bold());
-        println!(
-            "Executing script: {}",
-            &script_path.display().to_string().bold()
-        );
-    }
-    let additional_env = set_additional_env_var(args.env.clone(), quiet);
-    let python_args = args.py_arg.clone();
-    if !quiet {
-        for arg in &python_args {
-            println!("Python arg: {}", arg.bold());
+    // Prepare dependencies
+    let project_config_path = runtime_path.join("pyproject.toml");
+    let requirements_path = runtime_path.join("requirements.txt");
+    if !uv_path.is_empty() {
+        if !project_config_path.exists() && !requirements_path.exists() {
+            // both config are not exist
+        } else {
+            if project_config_path.exists() {
+                let cmd = Command::new(&uv_path)
+                    .args(["sync"])
+                    .stdout(Stdio::piped())
+                    .stderr(Stdio::piped())
+                    .output()
+                    .unwrap();
+                if !cmd.status.success() {
+                    error_println!(
+                        "Failed to install requirements: {:#?}",
+                        String::from_utf8(cmd.stderr).unwrap()
+                    );
+                    process::exit(1);
+                }
+            }
+            if requirements_path.exists() {
+                let cmd = Command::new(&uv_path)
+                    .args(["pip", "install", "-r", requirements_path.to_str().unwrap()])
+                    .stdout(Stdio::piped())
+                    .stderr(Stdio::piped())
+                    .output()
+                    .unwrap();
+                if !cmd.status.success() {
+                    error_println!(
+                        "Failed to install requirements: {:#?}",
+                        String::from_utf8(cmd.stderr).unwrap()
+                    );
+                    process::exit(1);
+                }
+            }
         }
-
-        if clean && !files_to_clean.is_empty() {
-            if !quiet {
-                warning_println!(
-                    "These following files will be deleted because you activate clean mode"
+    } else {
+        // if uv not installed
+        if requirements_path.exists() {
+            let cmd = Command::new(&python_native_path)
+                .args([
+                    "-m",
+                    "pip",
+                    "install",
+                    "-r",
+                    requirements_path.to_str().unwrap(),
+                ])
+                .stdout(Stdio::piped())
+                .stderr(Stdio::piped())
+                .output()
+                .unwrap();
+            if !cmd.status.success() {
+                error_println!(
+                    "Failed to install requirements: {:#?}",
+                    String::from_utf8(cmd.stderr).unwrap()
                 );
-            }
-
-            for path in &files_to_clean {
-                println!("{}", path.display().to_string().bold());
+                process::exit(1);
             }
         }
-
-        println!("-------------------------------");
     }
-    let mut command = construct_command(&venv_path, &script_path, &python_args, &additional_env);
-    let child = command.spawn().unwrap_or_else(|e| {
+
+    println!("Using venv: {}", venv.display().to_string().bold());
+    // load dot env
+    dotenv::from_path(args.env_file).ok();
+    // load additional env from args
+    let additional_env = set_additional_env_var(args.env, quiet);
+
+    // Construct the command
+    let py_cmd = Command::new(if !uv_path.is_empty() {
+        &uv_path
+    } else {
+        &python_native_path
+    })
+    .args(if !uv_path.is_empty() {
+        Vec::from(["run", script_path.to_str().unwrap()])
+    } else {
+        Vec::from([script_path.to_str().unwrap()])
+    })
+    .args(args.py_arg)
+    .envs(env::vars())
+    .envs(additional_env)
+    .stdout(Stdio::piped())
+    .stderr(Stdio::piped())
+    .spawn()
+    .unwrap_or_else(|e| {
         error_println!("Failed to execute Python script: {}", e.to_string().bold());
         process::exit(1);
     });
-    let result = stream_output(child);
-    if !files_to_clean.is_empty() {
+
+    if !quiet {
+        println!("------------------");
+    }
+
+    // Stream the output
+    let result = stream_output(py_cmd);
+    if args.clean {
         for path in files_to_clean.iter() {
             if path.is_dir() {
                 if let Err(_) = std::fs::remove_dir_all(path) {
