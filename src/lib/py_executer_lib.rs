@@ -8,7 +8,12 @@ use std::collections::HashMap;
 use std::process::Command;
 use std::{env, path::PathBuf};
 
-/// Appends the current directory to PYTHONPATH if it is valid.
+/// Append the current working directory to the PYTHONPATH environment variable
+///
+/// If the current directory is not valid, this function will return an empty `HashMap`.
+///
+/// If the current directory is already in the PYTHONPATH, this function will return an empty `HashMap`.
+/// Otherwise, this function will return a `HashMap` containing the updated PYTHONPATH.
 fn append_pwd_to_pythonpath(current_dir: PathBuf) -> HashMap<String, String> {
     if !current_dir.exists() {
         error_println!(
@@ -29,7 +34,15 @@ fn append_pwd_to_pythonpath(current_dir: PathBuf) -> HashMap<String, String> {
     }
 }
 
-/// Processes additional environment variables from CLI arguments.
+/// Set additional environment variables from command line arguments.
+///
+/// The function takes a list of strings as its first argument, where each string is a key-value pair
+/// separated by an '=' character. The function will parse each string and add the key-value pair to
+/// the `HashMap` returned by this function.
+///
+/// If a key-value pair is malformed, the function will print a warning message and ignore the pair.
+///
+/// The function also adds the current working directory to the `PYTHONPATH` environment variable.
 pub fn set_additional_env_var(
     additional_env_from_args: Vec<String>,
     quiet: bool,
@@ -83,6 +96,19 @@ pub fn validate_to_absolute_path(script_path: &PathBuf) -> anyhow::Result<PathBu
     }
 }
 
+/// Find the path of the `uv` command.
+///
+/// The function returns `Ok<String>` if `uv` is found, where the string is the path of
+/// the `uv` command. If `uv` is not found, the function prints a hint to install it
+/// and returns an `Err`.
+///
+/// The function uses `which` or `where` command to find the path of `uv`. If the command
+/// is not successful, it means `uv` is not installed, so the function prints a hint to
+/// install it and returns an `Err`.
+///
+/// # Errors
+///
+/// The function returns an `Err` if `uv` is not installed.
 pub fn get_uv_path() -> anyhow::Result<String> {
     // For Unix-like systems (Linux, macOS)
     #[cfg(not(target_os = "windows"))]
@@ -114,6 +140,11 @@ pub fn get_uv_path() -> anyhow::Result<String> {
     }
 }
 
+/// Returns the path of the Python executable within the given virtual environment.
+///
+/// For Unix-like systems (Linux, macOS), the Python executable is located in the `bin` directory.
+///
+/// For Windows, the Python executable is located in the `Scripts` directory, and has the `.exe` extension.
 pub fn get_python_exec_path(venv_path: &PathBuf) -> PathBuf {
     PathBuf::from(if cfg!(target_os = "windows") {
         venv_path

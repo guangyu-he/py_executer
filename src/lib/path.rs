@@ -3,6 +3,19 @@ use anyhow::anyhow;
 use std::path::PathBuf;
 use std::process::{Command, Stdio};
 
+/// Finds the native Python executable path.
+///
+/// If `uv_path` is empty, it uses `which` or `where` command to find the native Python executable.
+/// If the command is successful, it returns the path of the Python executable.
+/// If the command is not successful, it returns an empty string.
+///
+/// If `uv_path` is not empty, it returns an empty string.
+///
+/// # Platform-specific
+///
+/// On Unix-like systems, it uses `which` command.
+///
+/// On Windows, it uses `where` command.
 pub fn get_python_native_path(uv_path: &String) -> String {
     if uv_path.is_empty() {
         #[cfg(not(target_os = "windows"))]
@@ -29,6 +42,12 @@ pub fn get_python_native_path(uv_path: &String) -> String {
     }
 }
 
+/// Validates a venv path.
+///
+/// # Errors
+///
+/// The function returns an `Err` if the venv path does not exist or if the Python executable
+/// under the venv path does not exist.
 fn validate_venv(venv_path: PathBuf) -> anyhow::Result<PathBuf> {
     if !venv_path.exists() {
         Err(anyhow!("{} not exists", venv_path.display().to_string()))
@@ -45,6 +64,32 @@ fn validate_venv(venv_path: PathBuf) -> anyhow::Result<PathBuf> {
     }
 }
 
+/// Finds a virtual environment path.
+///
+/// # Errors
+///
+/// The function returns an `Err` if the provided venv path does not exist or if the Python executable
+/// under the venv path does not exist.
+///
+/// # Platform-specific
+///
+/// On Unix-like systems, it uses `which` command.
+///
+/// On Windows, it uses `where` command.
+///
+/// # Arguments
+///
+/// * `venv`: The venv path provided by the user.
+/// * `runtime_path`: The runtime path of the current directory.
+/// * `uv_path`: The path of the uv executable.
+/// * `python_native_path`: The path of the native Python executable.
+/// * `quiet`: If `true`, suppresses warnings and errors.
+/// * `clean`: If `true`, will clean the created uv-managed .venv and config files after execution.
+/// * `files_to_clean`: A vector of paths to clean.
+///
+/// # Returns
+///
+/// The path of the found virtual environment.
 pub fn get_venv_path(
     venv: PathBuf,
     runtime_path: PathBuf,
