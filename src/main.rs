@@ -19,9 +19,10 @@ struct Args {
     #[clap(index = 1)]
     script: PathBuf,
 
-    /// If there is a valid venv provided, it will be used directly without managed by uv
-    /// clean mode is not an option and will be ignored
-    /// requirements.txt will not be installed
+    /// Virtual environment path
+    /// If there is a valid venv provided, it will be used directly without being managed by uv.
+    /// Clean mode is not an option and will be ignored.
+    /// requirements.txt will not be installed.
     #[clap(short, long, default_value = ".venv")]
     venv: PathBuf,
 
@@ -29,23 +30,23 @@ struct Args {
     #[clap(short = 'E', long)]
     env: Vec<String>,
 
-    /// .env file
+    /// .env file path
     #[clap(short = 'e', long, default_value = ".env")]
     env_file: PathBuf,
 
     /// Suppress output
-    #[clap(long, default_value_t = false)]
+    #[clap(short, long)]
     quiet: bool,
 
     /// Clean mode
-    /// if specified, it will clean the created uv .venv and configs
-    /// if those files originally exist, they will not be deleted
-    #[clap(long, default_value_t = false)]
+    /// If specified, it will clean the created uv .venv and configs.
+    /// If those files originally exist, they will not be deleted.
+    #[clap(short, long)]
     clean: bool,
 
     /// Python arguments, must be placed as the last argument
     #[arg(short = 'A', long = "py_arg", num_args = 1.., value_delimiter = ' ')]
-    py_arg: Vec<String>,
+    py_args: Vec<String>,
 }
 
 /// Stream output from child process stdout and stderr
@@ -294,7 +295,7 @@ fn main() -> process::ExitCode {
     } else {
         Vec::from([script_path.to_str().unwrap()])
     })
-    .args(args.py_arg)
+    .args(args.py_args)
     .envs(env::vars())
     .envs(additional_env)
     .stdout(Stdio::piped())
