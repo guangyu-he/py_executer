@@ -112,6 +112,22 @@ pub fn get_uv_path() -> anyhow::Result<String> {
     }
 }
 
+pub fn get_python_exec_path(venv_path: &PathBuf) -> PathBuf {
+    PathBuf::from(if cfg!(target_os = "windows") {
+        venv_path
+            .join("Scripts")
+            .join("python.exe")
+            .to_string_lossy()
+            .to_string()
+    } else {
+        venv_path
+            .join("bin")
+            .join("python")
+            .to_string_lossy()
+            .to_string()
+    })
+}
+
 #[test]
 fn test_validate_to_absolute_path() {
     let script_path = PathBuf::from("test.py");

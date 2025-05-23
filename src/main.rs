@@ -8,7 +8,9 @@ use std::process::{Command, Stdio};
 use std::{env, process};
 
 use py_executer_lib::macros::{error_println, warning_println};
-use py_executer_lib::{get_uv_path, set_additional_env_var, validate_to_absolute_path};
+use py_executer_lib::{
+    get_python_exec_path, get_uv_path, set_additional_env_var, validate_to_absolute_path,
+};
 
 #[derive(Parser)]
 #[clap(author, version, about, long_about = None)]
@@ -89,19 +91,7 @@ fn validate_venv(venv_path: PathBuf) -> Result<PathBuf> {
     if !venv_path.exists() {
         Err(anyhow!("{} not exists", venv_path.display().to_string()))
     } else {
-        let python_exec_paths = PathBuf::from(if cfg!(target_os = "windows") {
-            venv_path
-                .join("Scripts")
-                .join("python.exe")
-                .to_string_lossy()
-                .to_string()
-        } else {
-            venv_path
-                .join("bin")
-                .join("python")
-                .to_string_lossy()
-                .to_string()
-        });
+        let python_exec_paths = get_python_exec_path(&venv_path);
         if !python_exec_paths.exists() {
             Err(anyhow!(
                 "Python executable {} not exists",
@@ -222,6 +212,8 @@ fn main() -> process::ExitCode {
         }
     };
 
+    let python_exec_path = get_python_exec_path(&venv).to_str().unwrap().to_string();
+
     // Prepare dependencies
     let project_config_path = runtime_path.join("pyproject.toml");
     let requirements_path = runtime_path.join("requirements.txt");
@@ -263,7 +255,7 @@ fn main() -> process::ExitCode {
     } else {
         // if uv not installed
         if requirements_path.exists() {
-            let cmd = Command::new(&python_native_path)
+            let cmd = Command::new(&python_exec_path)
                 .args([
                     "-m",
                     "pip",
@@ -295,7 +287,7 @@ fn main() -> process::ExitCode {
     let py_cmd = Command::new(if !uv_path.is_empty() {
         &uv_path
     } else {
-        &python_native_path
+        &python_exec_path
     })
     .args(if !uv_path.is_empty() {
         Vec::from(["run", script_path.to_str().unwrap()])
