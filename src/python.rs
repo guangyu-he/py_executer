@@ -88,7 +88,7 @@ pub fn python(
         } else {
             if project_config_path.exists() {
                 let cmd = Command::new(&uv_path)
-                    .args(["sync"])
+                    .args(["sync", "--project", runtime_path.to_str().unwrap()])
                     .stdout(Stdio::piped())
                     .stderr(Stdio::piped())
                     .output()
