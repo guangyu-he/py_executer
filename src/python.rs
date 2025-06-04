@@ -95,7 +95,7 @@ pub fn python(
                     .unwrap();
                 if !cmd.status.success() {
                     error_println!(
-                        "Failed to install requirements: {:#?}",
+                        "Failed to sync uv project: {:#?}",
                         String::from_utf8(cmd.stderr).unwrap()
                     );
                     process::exit(1);
@@ -103,14 +103,21 @@ pub fn python(
             }
             if requirements_path.exists() {
                 let cmd = Command::new(&uv_path)
-                    .args(["pip", "install", "-r", requirements_path.to_str().unwrap()])
+                    .args([
+                        "--directory",
+                        runtime_path.to_str().unwrap(),
+                        "pip",
+                        "install",
+                        "-r",
+                        "requirements.txt",
+                    ])
                     .stdout(Stdio::piped())
                     .stderr(Stdio::piped())
                     .output()
                     .unwrap();
                 if !cmd.status.success() {
                     error_println!(
-                        "Failed to install requirements: {:#?}",
+                        "Failed to install pip requirements: {:#?}",
                         String::from_utf8(cmd.stderr).unwrap()
                     );
                     process::exit(1);
