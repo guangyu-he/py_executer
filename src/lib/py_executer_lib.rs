@@ -8,30 +8,20 @@ use std::collections::HashMap;
 use std::process::Command;
 use std::{env, path::PathBuf};
 
-/// Append the current working directory to the PYTHONPATH environment variable
+/// Append the current working directory to the `PYTHONPATH` environment variable.
 ///
-/// If the current directory is not valid, this function will return an empty `HashMap`.
-///
-/// If the current directory is already in the PYTHONPATH, this function will return an empty `HashMap`.
-/// Otherwise, this function will return a `HashMap` containing the updated PYTHONPATH.
+/// The function takes a `PathBuf` as its argument, which represents the current working directory.
+/// It returns a `HashMap` where the key is the name of the environment variable and the value is
+/// the value of the environment variable.
 fn append_pwd_to_pythonpath(current_dir: PathBuf) -> HashMap<String, String> {
-    if !current_dir.exists() {
-        error_println!(
-            "Current directory not valid: {}",
-            current_dir.display().to_string().bold()
-        );
-        HashMap::new()
-    } else {
-        let mut path = env::var("PYTHONPATH").unwrap_or_default();
-        if !path.contains(&current_dir.to_string_lossy().to_string()) {
-            if !path.is_empty() {
-                path.push(':');
-            }
-            path.push_str(current_dir.to_string_lossy().to_string().as_str());
-            return HashMap::from([("PYTHONPATH".to_string(), path)]);
+    let mut path = env::var("PYTHONPATH").unwrap_or_default();
+    if !path.contains(&current_dir.to_string_lossy().to_string()) {
+        if !path.is_empty() {
+            path.push(':');
         }
-        HashMap::new()
+        path.push_str(current_dir.to_string_lossy().to_string().as_str());
     }
+    HashMap::from([("PYTHONPATH".to_string(), path)])
 }
 
 /// Set additional environment variables from command line arguments.

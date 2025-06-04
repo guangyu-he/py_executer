@@ -1,6 +1,6 @@
 [package]
 name = "py_executer"
-version = "0.2.1"
+version = "0.2.2"
 edition = "2024"
 description = "A Rust-based command-line tool to execute Python scripts with automatic virtual environment and dependency management."
 repository = "https://github.com/guangyu-he/py_executer"
