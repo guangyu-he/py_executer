@@ -33,7 +33,7 @@ recommended.
     ```sh
     cargo install --path .
     ```
-   
+
 ### from Github
 
 ```sh
@@ -60,6 +60,7 @@ py_executer run <SCRIPT_PATH> [OPTIONS]
 
 #### Options
 
+- `-p`, `--project <PROJECT_PATH>`: Specify the project directory (default: current directory).
 - `-v`, `--venv <VENV_PATH>`: Specify a custom virtual environment path (default: `.venv` or `venv`). If a valid venv is
   present, this venv will be used directly (not managed by uv), requirements.txt will not be installed, and clean mode
   will be ignored.
@@ -67,7 +68,8 @@ py_executer run <SCRIPT_PATH> [OPTIONS]
 - `-e`, `--env-file <ENV_FILE>`: Path to a .env file (default: `.env` in the current directory).
 - `--quiet`: Suppress output from the CLI.
 - `--clean`: Clean the created uv-managed .venv and config files after execution. Pre-existing files are not deleted.
-- `-A`, `--py-args <ARGs>`: Additional arguments to pass to the Python script. Must be placed as the last argument(s) and
+- `-A`, `--py-args <ARGs>`: Additional arguments to pass to the Python script. Must be placed as the last argument(s)
+  and
   will be passed directly to Python.
 
 ### running uv command
@@ -98,9 +100,10 @@ this will be equivalent to:
 ```sh
 uv venv
 uv pip install -r requirements.txt
+# or uv sync --project xxx # if it is an uv project
 export $(grep -v '^#' .env | xargs)  # if .env exists
 PYTHONPATH=$PYTHONPATH:$(pwd)
-.venv/bin/python my_script.py
+uv run --project xxx my_script.py
 ```
 
 or if no uv installed:
