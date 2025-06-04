@@ -29,14 +29,16 @@ recommended.
    git clone https://github.com/guangyu-he/py_executer
    cd py_executer
    ```
-2. Build the project and try:
-   ```sh
-   cargo build --release
-   ```
-3. Or install the binary:
+2. Install the binary:
     ```sh
     cargo install --path .
     ```
+   
+### from Github
+
+```sh
+cargo install --git https://github.com/guangyu-he/py_executer
+```
 
 ## from crates.io
 
