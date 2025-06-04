@@ -152,7 +152,12 @@ pub fn python(
         &python_exec_path
     })
     .args(if !uv_path.is_empty() {
-        Vec::from(["run", script_path.to_str().unwrap()])
+        Vec::from([
+            "run",
+            "--project",
+            runtime_path.to_str().unwrap(),
+            script_path.to_str().unwrap(),
+        ])
     } else {
         Vec::from([script_path.to_str().unwrap()])
     })
