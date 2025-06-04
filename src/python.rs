@@ -82,6 +82,9 @@ pub fn python(
     if !uv_path.is_empty() {
         if !project_config_path.exists() && !requirements_path.exists() {
             // both config are not exist
+            warning_println!(
+                "No pyproject.toml or requirements.txt found, will not prepare dependencies"
+            );
         } else {
             if project_config_path.exists() {
                 let cmd = Command::new(&uv_path)
