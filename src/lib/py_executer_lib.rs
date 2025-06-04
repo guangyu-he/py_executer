@@ -13,13 +13,13 @@ use std::{env, path::PathBuf};
 /// The function takes a `PathBuf` as its argument, which represents the current working directory.
 /// It returns a `HashMap` where the key is the name of the environment variable and the value is
 /// the value of the environment variable.
-fn append_pwd_to_pythonpath(current_dir: PathBuf) -> HashMap<String, String> {
+fn append_pwd_to_pythonpath(runtime_path: &PathBuf) -> HashMap<String, String> {
     let mut path = env::var("PYTHONPATH").unwrap_or_default();
-    if !path.contains(&current_dir.to_string_lossy().to_string()) {
+    if !path.contains(&runtime_path.to_string_lossy().to_string()) {
         if !path.is_empty() {
             path.push(':');
         }
-        path.push_str(current_dir.to_string_lossy().to_string().as_str());
+        path.push_str(runtime_path.to_string_lossy().to_string().as_str());
     }
     HashMap::from([("PYTHONPATH".to_string(), path)])
 }
@@ -35,13 +35,13 @@ fn append_pwd_to_pythonpath(current_dir: PathBuf) -> HashMap<String, String> {
 /// The function also adds the current working directory to the `PYTHONPATH` environment variable.
 pub fn set_additional_env_var(
     additional_env_from_args: Vec<String>,
+    runtime_path: &PathBuf,
     quiet: bool,
 ) -> HashMap<String, String> {
     let mut additional_env = HashMap::new();
 
     //add current dir to PYTHONPATH
-    let current_dir = env::current_dir().unwrap();
-    additional_env.extend(append_pwd_to_pythonpath(current_dir));
+    additional_env.extend(append_pwd_to_pythonpath(runtime_path));
 
     for env_var in additional_env_from_args {
         if let Some(pos) = env_var.find('=') {

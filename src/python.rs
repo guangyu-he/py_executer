@@ -1,4 +1,3 @@
-use std::env::current_dir;
 use std::path::PathBuf;
 use std::process::{Command, Stdio};
 use std::{env, process};
@@ -14,6 +13,7 @@ use py_executer_lib::{
 
 pub fn python(
     script: PathBuf,
+    project: PathBuf,
     venv: PathBuf,
     env: Vec<String>,
     env_file: PathBuf,
@@ -32,7 +32,10 @@ pub fn python(
         error_println!("Failed to get absolute path of script: {}", err);
         process::exit(1);
     });
-    let runtime_path = current_dir().unwrap();
+    let runtime_path = project.canonicalize().unwrap_or_else(|err| {
+        error_println!("Failed to get absolute path of project: {}", err);
+        process::exit(1);
+    });
 
     // Get uv installation information
     let uv_path = get_uv_path().unwrap_or("".to_string());
@@ -143,7 +146,7 @@ pub fn python(
     // load dot env
     dotenv::from_path(env_file).ok();
     // load additional env from args
-    let additional_env = set_additional_env_var(env, quiet);
+    let additional_env = set_additional_env_var(env, &runtime_path, quiet);
 
     // Construct the command
     let py_cmd = Command::new(if !uv_path.is_empty() {

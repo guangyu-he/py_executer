@@ -23,6 +23,10 @@ enum Commands {
         #[clap(index = 1)]
         script: PathBuf,
 
+        /// Project path
+        #[clap(short, long, default_value = ".")]
+        project: PathBuf,
+
         /// If there is a valid venv provided, it will be used directly without managed by uv
         /// clean mode is not an option and will be ignored
         /// requirements.txt will not be installed
@@ -65,13 +69,14 @@ fn main() -> process::ExitCode {
     match args.command {
         Commands::Run {
             script,
+            project,
             venv,
             env,
             env_file,
             quiet,
             clean,
             py_args,
-        } => python(script, venv, env, env_file, quiet, clean, py_args),
+        } => python(script, project, venv, env, env_file, quiet, clean, py_args),
         Commands::Uv { args } => uv(args),
     }
 }
