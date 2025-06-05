@@ -7,7 +7,7 @@ use colored::Colorize;
 use py_executer_lib::cmd::stream_output;
 use py_executer_lib::path::{get_python_native_path, get_venv_path};
 use py_executer_lib::{
-    error_println, get_python_exec_path, get_uv_path, set_additional_env_var,
+    error_println, get_pip_exec_path, get_python_exec_path, get_uv_path, set_additional_env_var,
     validate_to_absolute_path, warning_println,
 };
 
@@ -127,14 +127,9 @@ pub fn python(
     } else {
         // if uv not installed
         if requirements_path.exists() {
-            let cmd = Command::new(&python_exec_path)
-                .args([
-                    "-m",
-                    "pip",
-                    "install",
-                    "-r",
-                    requirements_path.to_str().unwrap(),
-                ])
+            let pip_exec_path = get_pip_exec_path(&venv);
+            let cmd = Command::new(&pip_exec_path)
+                .args(["install", "-r", requirements_path.to_str().unwrap()])
                 .stdout(Stdio::piped())
                 .stderr(Stdio::piped())
                 .output()

@@ -150,3 +150,19 @@ pub fn get_python_exec_path(venv_path: &PathBuf) -> PathBuf {
             .to_string()
     })
 }
+
+pub fn get_pip_exec_path(venv_path: &PathBuf) -> PathBuf {
+    PathBuf::from(if cfg!(target_os = "windows") {
+        venv_path
+            .join("Scripts")
+            .join("pip.exe")
+            .to_string_lossy()
+            .to_string()
+    } else {
+        venv_path
+            .join("bin")
+            .join("pip")
+            .to_string_lossy()
+            .to_string()
+    })
+}
