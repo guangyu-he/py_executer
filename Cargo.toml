@@ -1,6 +1,6 @@
 [package]
 name = "py_executer"
-version = "0.2.2"
+version = "0.2.3"
 edition = "2024"
 description = "A Rust-based command-line tool to execute Python scripts with automatic virtual environment and dependency management."
 repository = "https://github.com/guangyu-he/py_executer"
@@ -9,7 +9,7 @@ exclude = ["tests/"]
 
 [dependencies]
 dotenv = "0.15.0"
-clap = { version = "4.5.38", features = ["derive"] }
+clap = { version = "4.5.39", features = ["derive"] }
 colored = "3.0.0"
 anyhow = "1.0.98"
 
