@@ -5,6 +5,7 @@ edition = "2024"
 description = "A Rust-based command-line tool to execute Python scripts with automatic virtual environment and dependency management."
 repository = "https://github.com/guangyu-he/py_executer"
 license = "MIT"
+exclude = ["tests/"]
 
 [dependencies]
 dotenv = "0.15.0"
