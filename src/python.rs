@@ -16,7 +16,7 @@ pub fn python(
     project: PathBuf,
     venv: PathBuf,
     env: Vec<String>,
-    env_file: PathBuf,
+    env_file: Option<PathBuf>,
     quiet: bool,
     clean: bool,
     py_args: Vec<String>,
@@ -155,7 +155,25 @@ pub fn python(
     }
 
     // load dot env
-    dotenv::from_path(env_file).ok();
+    match env_file {
+        None => {
+            // if dot env not provided, but runtime path provided
+            let env_file = runtime_path.join(".env");
+            if env_file.exists() {
+                dotenv::from_path(env_file).ok();
+            }
+        }
+        Some(env_file) => {
+            // if dot env provided, use it
+            if env_file.exists() {
+                dotenv::from_path(env_file).ok();
+            } else {
+                // provided dot env does not exist
+                warning_println!("Provided env file does not exist, will not use it");
+            }
+        }
+    };
+
     // load additional env from args
     let additional_env = set_additional_env_var(env, &runtime_path, quiet);
 

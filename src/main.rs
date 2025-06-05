@@ -37,9 +37,10 @@ enum Commands {
         #[clap(short = 'E', long)]
         env: Vec<String>,
 
-        /// .env file
-        #[clap(short = 'e', long, default_value = ".env")]
-        env_file: PathBuf,
+        /// .env file path, if provided, it will be loaded.
+        /// If a .env file is found under --project path, it will be loaded automatically
+        #[clap(short = 'e', long)]
+        env_file: Option<PathBuf>,
 
         /// Suppress output
         #[clap(long, default_value_t = false)]
