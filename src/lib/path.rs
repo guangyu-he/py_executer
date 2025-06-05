@@ -1,5 +1,4 @@
-use crate::{get_python_exec_path, warning_println};
-use anyhow::anyhow;
+use crate::warning_println;
 use std::path::PathBuf;
 use std::process::{Command, Stdio};
 
@@ -39,28 +38,6 @@ pub fn get_python_native_path(uv_path: &String) -> String {
         }
     } else {
         "".to_string()
-    }
-}
-
-/// Validates a venv path.
-///
-/// # Errors
-///
-/// The function returns an `Err` if the venv path does not exist or if the Python executable
-/// under the venv path does not exist.
-fn validate_venv(venv_path: PathBuf) -> anyhow::Result<PathBuf> {
-    if !venv_path.exists() {
-        Err(anyhow!("{} not exists", venv_path.display().to_string()))
-    } else {
-        let python_exec_paths = get_python_exec_path(&venv_path);
-        if !python_exec_paths.exists() {
-            Err(anyhow!(
-                "Python executable {} not exists",
-                python_exec_paths.display().to_string()
-            ))
-        } else {
-            Ok(venv_path)
-        }
     }
 }
 
