@@ -61,9 +61,6 @@ py_executer run <SCRIPT_PATH> [OPTIONS]
 #### Options
 
 - `-p`, `--project <PROJECT_PATH>`: Specify the project directory (default: current directory).
-- `-v`, `--venv <VENV_PATH>`: Specify a custom virtual environment path (default: `.venv` or `venv`). If a valid venv is
-  present, this venv will be used directly (not managed by uv), requirements.txt will not be installed, and clean mode
-  will be ignored.
 - `-E`, `--env <KEY=VALUE>`: Additional environment variables in the format KEY=VALUE. Can be used multiple times.
 - `-e`, `--env-file <ENV_FILE>`: Path to a .env file if provided, it will be loaded. If a .env file is found under
   `--project path`, it will be loaded automatically
@@ -121,16 +118,19 @@ python3 my_script.py
 #### more customized options
 
 ```sh
-py_executer run my_script.py -v venv -E DEBUG=true -A --input data.txt
+py_executer run my_script.py --project /path/to/project -E DEBUG=true -A --input data.txt
 ```
 
 this will be equivalent to:
 
 ```sh
-export $(grep -v '^#' .env | xargs)
+uv venv --project /path/to/project # if venv is not created
+uv pip install -r requirements.txt
+# or uv sync --project /path/to/project # if it is an uv project
+export $(grep -v '^#' /path/to/project.env | xargs)
 PYTHONPATH=$PYTHONPATH:$(pwd)
 DEBUG=true
-venv/bin/python3 my_script.py --input data.txt
+uv run --project /path/to/project my_script.py --input data.txt
 ```
 
 ## Project Structure
