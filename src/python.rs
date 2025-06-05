@@ -14,7 +14,7 @@ use py_executer_lib::{
 pub fn python(
     script: PathBuf,
     project: PathBuf,
-    venv: PathBuf,
+    venv: Option<PathBuf>,
     env: Vec<String>,
     env_file: Option<PathBuf>,
     quiet: bool,

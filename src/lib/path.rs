@@ -91,7 +91,7 @@ fn validate_venv(venv_path: PathBuf) -> anyhow::Result<PathBuf> {
 ///
 /// The path of the found virtual environment.
 pub fn get_venv_path(
-    venv: PathBuf,
+    venv: Option<PathBuf>,
     runtime_path: PathBuf,
     uv_path: String,
     python_native_path: String,
@@ -99,32 +99,61 @@ pub fn get_venv_path(
     clean: bool,
     files_to_clean: &mut Vec<PathBuf>,
 ) -> PathBuf {
-    match validate_venv(venv) {
-        Ok(venv) => venv,
-        Err(e) => {
-            if !quiet {
-                warning_println!(
-                    "Failed to validate  provided venv: {}, looking for a possible one under current directory",
-                    e
-                );
+    match venv {
+        Some(venv) => match validate_venv(venv) {
+            Ok(venv) => venv,
+            Err(e) => {
+                if !quiet {
+                    warning_println!(
+                        "Failed to validate provided venv: {}, looking for a possible one under {}",
+                        e,
+                        runtime_path.display()
+                    );
+                }
+                find_venv(
+                    runtime_path,
+                    uv_path,
+                    python_native_path,
+                    quiet,
+                    clean,
+                    files_to_clean,
+                )
             }
-            let possible_venv_dir_names = ["venv", ".venv"];
-            possible_venv_dir_names
-                .iter()
-                .map(|name| runtime_path.join(name))
-                .find(|path| path.exists())
-                .unwrap_or_else(|| {
-                    prepare_venv(
-                        quiet,
-                        &runtime_path,
-                        &uv_path,
-                        &python_native_path,
-                        clean,
-                        files_to_clean,
-                    )
-                })
-        }
+        },
+        None => find_venv(
+            runtime_path,
+            uv_path,
+            python_native_path,
+            quiet,
+            clean,
+            files_to_clean,
+        ),
     }
+}
+
+fn find_venv(
+    runtime_path: PathBuf,
+    uv_path: String,
+    python_native_path: String,
+    quiet: bool,
+    clean: bool,
+    files_to_clean: &mut Vec<PathBuf>,
+) -> PathBuf {
+    let possible_venv_dir_names = ["venv", ".venv"];
+    possible_venv_dir_names
+        .iter()
+        .map(|name| runtime_path.join(name))
+        .find(|path| path.exists())
+        .unwrap_or_else(|| {
+            prepare_venv(
+                quiet,
+                &runtime_path,
+                &uv_path,
+                &python_native_path,
+                clean,
+                files_to_clean,
+            )
+        })
 }
 
 fn prepare_venv(

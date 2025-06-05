@@ -31,7 +31,7 @@ enum Commands {
         /// clean mode is not an option and will be ignored
         /// requirements.txt will not be installed
         #[clap(short, long, default_value = ".venv")]
-        venv: PathBuf,
+        venv: Option<PathBuf>,
 
         /// Additional environment variables in the format KEY=VALUE (can be used multiple times)
         #[clap(short = 'E', long)]
