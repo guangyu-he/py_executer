@@ -65,12 +65,12 @@ py_executer run <SCRIPT_PATH> [OPTIONS]
   present, this venv will be used directly (not managed by uv), requirements.txt will not be installed, and clean mode
   will be ignored.
 - `-E`, `--env <KEY=VALUE>`: Additional environment variables in the format KEY=VALUE. Can be used multiple times.
-- `-e`, `--env-file <ENV_FILE>`: Path to a .env file (default: `.env` in the current directory).
-- `--quiet`: Suppress output from the CLI.
+- `-e`, `--env-file <ENV_FILE>`: Path to a .env file if provided, it will be loaded. If a .env file is found under
+  `--project path`, it will be loaded automatically
+- `--quiet`: Suppress output from the CLI (python stdout and stderr will display normally).
 - `--clean`: Clean the created uv-managed .venv and config files after execution. Pre-existing files are not deleted.
 - `-A`, `--py-args <ARGs>`: Additional arguments to pass to the Python script. Must be placed as the last argument(s)
-  and
-  will be passed directly to Python.
+  and will be passed directly to Python.
 
 ### running uv command
 
