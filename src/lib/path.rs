@@ -79,7 +79,6 @@ fn validate_venv(venv_path: PathBuf) -> anyhow::Result<PathBuf> {
 ///
 /// # Arguments
 ///
-/// * `venv`: The venv path provided by the user.
 /// * `runtime_path`: The runtime path of the current directory.
 /// * `uv_path`: The path of the uv executable.
 /// * `python_native_path`: The path of the native Python executable.
@@ -91,47 +90,6 @@ fn validate_venv(venv_path: PathBuf) -> anyhow::Result<PathBuf> {
 ///
 /// The path of the found virtual environment.
 pub fn get_venv_path(
-    venv: Option<PathBuf>,
-    runtime_path: PathBuf,
-    uv_path: String,
-    python_native_path: String,
-    quiet: bool,
-    clean: bool,
-    files_to_clean: &mut Vec<PathBuf>,
-) -> PathBuf {
-    match venv {
-        Some(venv) => match validate_venv(venv) {
-            Ok(venv) => venv,
-            Err(e) => {
-                if !quiet {
-                    warning_println!(
-                        "Failed to validate provided venv: {}, looking for a possible one under {}",
-                        e,
-                        runtime_path.display()
-                    );
-                }
-                find_venv(
-                    runtime_path,
-                    uv_path,
-                    python_native_path,
-                    quiet,
-                    clean,
-                    files_to_clean,
-                )
-            }
-        },
-        None => find_venv(
-            runtime_path,
-            uv_path,
-            python_native_path,
-            quiet,
-            clean,
-            files_to_clean,
-        ),
-    }
-}
-
-fn find_venv(
     runtime_path: PathBuf,
     uv_path: String,
     python_native_path: String,
@@ -165,7 +123,10 @@ fn prepare_venv(
     files_to_clean: &mut Vec<PathBuf>,
 ) -> PathBuf {
     if !quiet {
-        warning_println!("No venv found in current directory, will generate one");
+        warning_println!(
+            "No venv found in {}, will generate one",
+            runtime_path.display()
+        );
     }
     let new_venv_path = runtime_path.join(".venv");
     let _ = Command::new(if uv_path.is_empty() {

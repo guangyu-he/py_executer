@@ -14,7 +14,6 @@ use py_executer_lib::{
 pub fn python(
     script: PathBuf,
     project: PathBuf,
-    venv: Option<PathBuf>,
     env: Vec<String>,
     env_file: Option<PathBuf>,
     quiet: bool,
@@ -65,7 +64,6 @@ pub fn python(
     // try to find a possible venv under current directory
     // or create a new venv
     let venv = get_venv_path(
-        venv,
         runtime_path.clone(),
         uv_path.clone(),
         python_native_path.clone(),
