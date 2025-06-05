@@ -114,33 +114,51 @@ pub fn get_venv_path(
                 .map(|name| runtime_path.join(name))
                 .find(|path| path.exists())
                 .unwrap_or_else(|| {
-                    if !quiet {
-                        warning_println!("No venv found in current directory, will generate one");
-                    }
-                    let new_venv_path = runtime_path.join(".venv");
-                    let _ = Command::new(if uv_path.is_empty() {
-                        &python_native_path
-                    } else {
-                        &uv_path
-                    })
-                    .args(["venv", &new_venv_path.to_str().unwrap()])
-                    .stdout(if quiet {
-                        Stdio::null()
-                    } else {
-                        Stdio::inherit()
-                    })
-                    .stderr(if quiet {
-                        Stdio::null()
-                    } else {
-                        Stdio::inherit()
-                    })
-                    .output()
-                    .unwrap();
-                    if clean {
-                        files_to_clean.push(new_venv_path.clone());
-                    }
-                    new_venv_path
+                    prepare_venv(
+                        quiet,
+                        &runtime_path,
+                        &uv_path,
+                        &python_native_path,
+                        clean,
+                        files_to_clean,
+                    )
                 })
         }
     }
+}
+
+fn prepare_venv(
+    quiet: bool,
+    runtime_path: &PathBuf,
+    uv_path: &String,
+    python_native_path: &String,
+    clean: bool,
+    files_to_clean: &mut Vec<PathBuf>,
+) -> PathBuf {
+    if !quiet {
+        warning_println!("No venv found in current directory, will generate one");
+    }
+    let new_venv_path = runtime_path.join(".venv");
+    let _ = Command::new(if uv_path.is_empty() {
+        &python_native_path
+    } else {
+        &uv_path
+    })
+    .args(["venv", &new_venv_path.to_str().unwrap()])
+    .stdout(if quiet {
+        Stdio::null()
+    } else {
+        Stdio::inherit()
+    })
+    .stderr(if quiet {
+        Stdio::null()
+    } else {
+        Stdio::inherit()
+    })
+    .output()
+    .unwrap();
+    if clean {
+        files_to_clean.push(new_venv_path.clone());
+    }
+    new_venv_path
 }
