@@ -20,7 +20,7 @@ enum Commands {
     /// Run script mode
     Run {
         /// Script path
-        #[clap(index = 1)]
+        #[clap(value_name = "SCRIPT")]
         script: PathBuf,
 
         /// Project path
@@ -46,8 +46,8 @@ enum Commands {
         #[clap(long, default_value_t = false)]
         clean: bool,
 
-        /// Python arguments, must be placed as the last argument
-        #[arg(short = 'A', long = "py_arg", num_args = 1.., value_delimiter = ' ')]
+        /// Python arguments, must be placed as the last argument after --
+        #[arg(num_args(0..), trailing_var_arg = true, allow_hyphen_values = true)]
         py_args: Vec<String>,
     },
     /// UV mode - pass all arguments to uv command
