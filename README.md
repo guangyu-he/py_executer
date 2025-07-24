@@ -66,8 +66,7 @@ py_executer run <SCRIPT_PATH> [OPTIONS]
   `--project path`, it will be loaded automatically
 - `--quiet`: Suppress output from the CLI (python stdout and stderr will display normally).
 - `--clean`: Clean the created uv-managed .venv and config files after execution. Pre-existing files are not deleted.
-- `-A`, `--py-args <ARGs>`: Additional arguments to pass to the Python script. Must be placed as the last argument(s)
-  and will be passed directly to Python.
+- `-- <ARGs>`: Arguments to pass to the Python script. Must be placed as the last argument(s) and after `--`.
 
 ### running uv command
 
@@ -118,7 +117,7 @@ python3 my_script.py
 #### more customized options
 
 ```sh
-py_executer run my_script.py --project /path/to/project -E DEBUG=true -A --input data.txt
+py_executer run my_script.py --project /path/to/project -E DEBUG=true -- --input data.txt
 ```
 
 this will be equivalent to:
