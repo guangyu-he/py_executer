@@ -1,4 +1,3 @@
-pub mod cmd;
 pub mod macros;
 pub mod path;
 

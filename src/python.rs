@@ -4,7 +4,6 @@ use std::{env, process};
 
 use colored::Colorize;
 
-use py_executer_lib::cmd::stream_output;
 use py_executer_lib::path::{get_python_native_path, get_venv_path};
 use py_executer_lib::{
     error_println, get_python_exec_path, get_uv_path, set_additional_env_var,
@@ -194,20 +193,19 @@ pub fn python(
     .args(py_args)
     .envs(env::vars())
     .envs(additional_env)
-    .stdout(Stdio::piped())
-    .stderr(Stdio::piped())
+    .stdout(Stdio::inherit())
+    .stderr(Stdio::inherit())
     .spawn()
     .unwrap_or_else(|e| {
         error_println!("Failed to execute Python script: {}", e.to_string().bold());
         process::exit(1);
-    });
+    })
+    .wait();
 
     if !quiet {
         println!("------------------");
     }
 
-    // Stream the output
-    let result = stream_output(py_cmd);
     if clean {
         for path in files_to_clean.iter() {
             if path.is_dir() {
@@ -221,5 +219,18 @@ pub fn python(
             }
         }
     }
-    result
+
+    match py_cmd {
+        Ok(status) => {
+            if status.success() {
+                process::ExitCode::SUCCESS
+            } else {
+                process::ExitCode::FAILURE
+            }
+        }
+        Err(e) => {
+            error_println!("Failed to execute Python script: {}", e.to_string().bold());
+            process::ExitCode::FAILURE
+        }
+    }
 }
