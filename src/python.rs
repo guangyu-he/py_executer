@@ -174,6 +174,10 @@ pub fn python(
     // load additional env from args
     let additional_env = set_additional_env_var(env, &runtime_path, quiet);
 
+    if !quiet {
+        println!("------------------");
+    }
+
     // Construct the command
     let py_cmd = Command::new(if !uv_path.is_empty() {
         &uv_path
@@ -201,10 +205,6 @@ pub fn python(
         process::exit(1);
     })
     .wait();
-
-    if !quiet {
-        println!("------------------");
-    }
 
     if clean {
         for path in files_to_clean.iter() {
